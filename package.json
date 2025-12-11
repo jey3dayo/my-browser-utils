@@ -1,0 +1,21 @@
+{
+  "name": "my-browser-utils",
+  "version": "1.0.0",
+  "description": "個人用のブラウザユーティリティChrome拡張機能",
+  "main": "dist/background.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chrome": "^0.1.32",
+    "typescript": "^5.9.3"
+  }
+}

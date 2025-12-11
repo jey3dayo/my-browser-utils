@@ -59,16 +59,18 @@
 my-browser-utils/
 ├── .claude/
 │   └── rules/          # 開発ルール（Claude Code用）
+├── dist/               # tscの出力先（自動生成）
 ├── docs/               # プロジェクトドキュメント
 │   └── icon-setup.md   # アイコン作成ガイド
 ├── icons/              # 拡張機能アイコン
 ├── images/             # ポップアップUI用画像
 ├── manifest.json       # 拡張機能マニフェスト
-├── background.js       # バックグラウンドスクリプト
-├── content.js          # コンテンツスクリプト
+├── src/                # TypeScriptソース
+│   ├── background.ts   # バックグラウンドスクリプト
+│   ├── content.ts      # コンテンツスクリプト
+│   └── popup.ts        # ポップアップロジック
 ├── content.css         # コンテンツスクリプト用スタイル
 ├── popup.html          # ポップアップUI
-├── popup.js            # ポップアップロジック
 └── popup.css           # ポップアップスタイル
 ```
 
@@ -92,6 +94,15 @@ magick images/logo.png -fuzz 10% -transparent white -resize 128x128 icons/icon12
 ### 拡張機能のリロード
 
 Chrome拡張機能ページ（`chrome://extensions/`）で「更新」ボタンをクリック
+
+### ビルド
+
+```bash
+npm install
+npm run build   # dist/ にコンパイル
+# 開発時の監視
+npm run watch
+```
 
 ## TODO
 

@@ -1,36 +1,34 @@
 // Content Script - Webページに注入される
 
+(() => {
+type StorageData = {
+  domainPatterns?: string[];
+  autoEnableSort?: boolean;
+};
+
+type ContentRequest =
+  | { action: 'enableTableSort' }
+  | { action: 'showNotification'; message: string };
+
+let tableObserver: MutationObserver | null = null;
+
 // ========================================
 // 1. ユーティリティ関数
 // ========================================
 
-/**
- * ワイルドカードパターンを正規表現に変換
- * @param {string} pattern - ワイルドカードパターン（例: *.example.com/path/*）
- * @returns {RegExp} - 正規表現オブジェクト
- */
-function patternToRegex(pattern) {
-  // エスケープ処理: 正規表現の特殊文字をエスケープ（*を除く）
+function patternToRegex(pattern: string): RegExp {
   const escaped = pattern
     .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/\*/g, '.*'); // * を .* に変換
+    .replace(/\*/g, '.*');
 
   return new RegExp(`^${escaped}$`);
 }
 
-/**
- * 現在のURLが登録パターンにマッチするかチェック
- * @param {string[]} patterns - 登録済みパターン配列
- * @returns {boolean} - マッチしたらtrue
- */
-function matchesAnyPattern(patterns) {
+function matchesAnyPattern(patterns: string[]): boolean {
   const url = window.location.href;
-
-  // プロトコルを除去したURLを生成（http/https両対応）
   const urlWithoutProtocol = url.replace(/^https?:\/\//, '');
 
   return patterns.some(pattern => {
-    // パターンからプロトコルを除去
     const patternWithoutProtocol = pattern.replace(/^https?:\/\//, '');
     const regex = patternToRegex(patternWithoutProtocol);
 
@@ -42,13 +40,17 @@ function matchesAnyPattern(patterns) {
 // 2. メッセージリスナー
 // ========================================
 
-// メッセージリスナー
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((request: ContentRequest, _sender: chrome.runtime.MessageSender, sendResponse: (response?: unknown) => void) => {
   if (request.action === 'enableTableSort') {
     enableTableSort();
-    startTableObserver(); // MutationObserverも開始
+    startTableObserver();
     sendResponse({ success: true });
   }
+
+  if (request.action === 'showNotification') {
+    showNotification(request.message);
+  }
+
   return true;
 });
 
@@ -56,15 +58,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // 3. テーブルソート機能
 // ========================================
 
-/**
- * 単一テーブルに対してソート機能を有効化
- * @param {HTMLTableElement} table - 対象テーブル
- */
-function enableSingleTable(table) {
-  if (table.dataset.sortable) return; // 既に有効化済み
+function enableSingleTable(table: HTMLTableElement): void {
+  if (table.dataset.sortable) return;
 
   table.dataset.sortable = 'true';
-  const headers = table.querySelectorAll('th');
+  const headers = table.querySelectorAll<HTMLTableCellElement>('th');
 
   headers.forEach((header, index) => {
     header.style.cursor = 'pointer';
@@ -77,11 +75,8 @@ function enableSingleTable(table) {
   });
 }
 
-/**
- * ページ内の全テーブルに対してソート機能を有効化
- */
-function enableTableSort() {
-  const tables = document.querySelectorAll('table');
+function enableTableSort(): void {
+  const tables = document.querySelectorAll<HTMLTableElement>('table');
 
   tables.forEach(table => {
     enableSingleTable(table);
@@ -92,87 +87,70 @@ function enableTableSort() {
   }
 }
 
-function sortTable(table, columnIndex) {
-  const tbody = table.querySelector('tbody') || table;
-  const rows = Array.from(tbody.querySelectorAll('tr')).filter(row =>
-    row.parentNode === tbody
-  );
+function sortTable(table: HTMLTableElement, columnIndex: number): void {
+  const tbody = table.querySelector('tbody') as HTMLTableSectionElement | null;
+  const targetBody = tbody ?? table;
+  const rows = Array.from(targetBody.querySelectorAll<HTMLTableRowElement>('tr')).filter(row => row.parentNode === targetBody);
 
   const isAscending = table.dataset.sortOrder !== 'asc';
   table.dataset.sortOrder = isAscending ? 'asc' : 'desc';
 
   rows.sort((a, b) => {
-    const aCell = a.cells[columnIndex]?.textContent.trim() || '';
-    const bCell = b.cells[columnIndex]?.textContent.trim() || '';
+    const aCell = a.cells[columnIndex]?.textContent?.trim() ?? '';
+    const bCell = b.cells[columnIndex]?.textContent?.trim() ?? '';
 
-    // 数値として比較できる場合は数値比較
     const aNum = parseFloat(aCell);
     const bNum = parseFloat(bCell);
 
-    if (!isNaN(aNum) && !isNaN(bNum)) {
+    if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) {
       return isAscending ? aNum - bNum : bNum - aNum;
     }
 
-    // 文字列比較
     return isAscending
       ? aCell.localeCompare(bCell, 'ja')
       : bCell.localeCompare(aCell, 'ja');
   });
 
-  rows.forEach(row => tbody.appendChild(row));
+  rows.forEach(row => targetBody.appendChild(row));
 }
 
 // ========================================
 // 4. MutationObserver（動的テーブル検出）
 // ========================================
 
-let tableObserver = null;
-
-/**
- * MutationObserverを開始（動的テーブル検出用）
- */
-function startTableObserver() {
-  // 既に起動中なら何もしない
+function startTableObserver(): void {
   if (tableObserver) return;
 
-  // debounce用のタイマー
-  let debounceTimer = null;
+  let debounceTimer: number | undefined;
 
-  tableObserver = new MutationObserver(() => {
-    // debounce: 300ms以内の連続呼び出しをまとめる
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(() => {
+  const handleMutations = (): void => {
+    window.clearTimeout(debounceTimer);
+    debounceTimer = window.setTimeout(() => {
       checkForNewTables();
     }, 300);
-  });
+  };
 
-  // document.body全体を監視
+  tableObserver = new MutationObserver(handleMutations);
+
   tableObserver.observe(document.body, {
-    childList: true,      // 子要素の追加・削除を監視
-    subtree: true         // 子孫要素も監視
+    childList: true,
+    subtree: true
   });
 }
 
-/**
- * 新しいテーブルをチェックして有効化
- */
-function checkForNewTables() {
-  const tables = document.querySelectorAll('table:not([data-sortable])');
+function checkForNewTables(): void {
+  const tables = document.querySelectorAll<HTMLTableElement>('table:not([data-sortable])');
 
   if (tables.length > 0) {
     tables.forEach(table => {
       enableSingleTable(table);
     });
 
-    // 通知は1回のみ
     showNotification(`${tables.length}個の新しいテーブルでソートを有効化しました`);
   }
 }
 
-/**
- * MutationObserverを停止
- */
-function stopTableObserver() {
+function stopTableObserver(): void {
   if (tableObserver) {
     tableObserver.disconnect();
     tableObserver = null;
@@ -183,16 +161,14 @@ function stopTableObserver() {
 // 5. UI・通知関連
 // ========================================
 
-// 範囲選択テキストのAI連携（右クリックメニュー用）
 document.addEventListener('mouseup', () => {
-  const selectedText = window.getSelection().toString().trim();
+  const selectedText = window.getSelection()?.toString().trim();
   if (selectedText) {
-    // 選択テキストをストレージに保存
-    chrome.storage.local.set({ selectedText });
+    void chrome.storage.local.set({ selectedText });
   }
 });
 
-function showNotification(message) {
+function showNotification(message: string): void {
   const notification = document.createElement('div');
   notification.textContent = message;
   notification.style.cssText = `
@@ -210,13 +186,12 @@ function showNotification(message) {
   `;
 
   document.body.appendChild(notification);
-  setTimeout(() => {
+  window.setTimeout(() => {
     notification.style.animation = 'slideOut 0.3s ease-out';
-    setTimeout(() => notification.remove(), 300);
+    window.setTimeout(() => notification.remove(), 300);
   }, 2500);
 }
 
-// アニメーション用CSS
 if (!document.getElementById('my-browser-utils-styles')) {
   const style = document.createElement('style');
   style.id = 'my-browser-utils-styles';
@@ -249,24 +224,17 @@ if (!document.getElementById('my-browser-utils-styles')) {
 // 6. 自動実行ロジック
 // ========================================
 
-/**
- * ページ読み込み時に自動実行
- * 登録されたドメインパターンにマッチする場合、自動的にテーブルソートを有効化
- */
-(async function autoEnableTableSort() {
+(async function autoEnableTableSort(): Promise<void> {
   try {
-    // chrome.storage.syncから設定を取得
-    const { domainPatterns = [], autoEnableSort = false } =
+    const { domainPatterns = [], autoEnableSort = false }: StorageData =
       await chrome.storage.sync.get(['domainPatterns', 'autoEnableSort']);
 
-    // グローバルフラグがONの場合は全サイトで有効化
     if (autoEnableSort) {
       enableTableSort();
       startTableObserver();
       return;
     }
 
-    // ドメインパターンマッチング
     if (domainPatterns.length > 0 && matchesAnyPattern(domainPatterns)) {
       enableTableSort();
       startTableObserver();
@@ -274,4 +242,6 @@ if (!document.getElementById('my-browser-utils-styles')) {
   } catch (error) {
     console.error('Auto-enable table sort failed:', error);
   }
+})();
+
 })();
