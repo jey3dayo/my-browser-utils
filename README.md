@@ -98,10 +98,10 @@ Chrome拡張機能ページ（`chrome://extensions/`）で「更新」ボタン�
 ### ビルド
 
 ```bash
-npm install
-npm run build   # dist/ にコンパイル
+pnpm install
+pnpm run build   # dist/ にコンパイル
 # 開発時の監視
-npm run watch
+pnpm run watch
 ```
 
 ## TODO
