@@ -437,6 +437,24 @@ body {
   margin: 8px 0 6px;
 }
 
+.summary-output {
+  width: 100%;
+  min-height: 160px;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--text);
+  resize: vertical;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.summary-output::placeholder {
+  color: #7d86a2;
+}
+
 .field-label {
   display: block;
   margin-top: 8px;
