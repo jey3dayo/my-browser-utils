@@ -255,9 +255,7 @@
     const navItems = Array.from(
       document.querySelectorAll<HTMLButtonElement>(".nav-item"),
     );
-    const panes = Array.from(
-      document.querySelectorAll<HTMLElement>(".pane"),
-    );
+    const panes = Array.from(document.querySelectorAll<HTMLElement>(".pane"));
 
     navItems.forEach((item) => {
       item.addEventListener("click", () => {
@@ -273,7 +271,9 @@
     });
   }
 
-  async function loadOpenAiToken(input: HTMLInputElement | null): Promise<void> {
+  async function loadOpenAiToken(
+    input: HTMLInputElement | null,
+  ): Promise<void> {
     if (!input) return;
     const { openaiApiToken = "" } = (await chrome.storage.local.get([
       "openaiApiToken",
