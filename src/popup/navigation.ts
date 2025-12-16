@@ -14,20 +14,24 @@ type NavigationElements = {
   ctaPill: HTMLButtonElement | null;
   sidebarToggle: HTMLButtonElement | null;
   sidebarHome: HTMLButtonElement | null;
+  menuDrawer: HTMLElement | null;
+  menuScrim: HTMLElement | null;
+  menuClose: HTMLButtonElement | null;
 };
-
-const SIDEBAR_COLLAPSED_KEY_SUFFIX = 'sidebarCollapsed';
 
 function getElements(document: Document): NavigationElements {
   return {
     body: document.body,
-    content: document.querySelector<HTMLElement>('.content'),
-    navItems: Array.from(document.querySelectorAll<HTMLElement>('.nav-item[data-target]')),
+    content: document.querySelector<HTMLElement>('.content-body'),
+    navItems: Array.from(document.querySelectorAll<HTMLElement>('[data-target]')),
     panes: Array.from(document.querySelectorAll<HTMLElement>('.pane')),
     heroChip: document.getElementById('hero-chip') as HTMLSpanElement | null,
     ctaPill: document.getElementById('cta-pill') as HTMLButtonElement | null,
     sidebarToggle: document.getElementById('sidebar-toggle') as HTMLButtonElement | null,
     sidebarHome: document.getElementById('sidebar-home') as HTMLButtonElement | null,
+    menuDrawer: document.getElementById('menu-drawer'),
+    menuScrim: document.getElementById('menu-scrim'),
+    menuClose: document.getElementById('menu-close') as HTMLButtonElement | null,
   };
 }
 
@@ -94,46 +98,96 @@ function safelyReplaceHash(window: Window, nextHash: string): void {
   }
 }
 
-function readSidebarCollapsed(window: Window, storageKey: string): boolean {
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    // 右側レール（アイコン中心）を基本にしたいので、未設定時は折りたたみ状態をデフォルトにする。
-    if (raw === null) return true;
-    return raw === '1';
-  } catch {
-    return true;
-  }
-}
+type MenuDrawerApi = {
+  closeMenu: () => void;
+  openMenu: () => void;
+  toggleMenu: () => void;
+  isOpen: () => boolean;
+};
 
-function writeSidebarCollapsed(window: Window, storageKey: string, collapsed: boolean): void {
-  try {
-    window.localStorage.setItem(storageKey, collapsed ? '1' : '0');
-  } catch {
-    // ignore
-  }
-}
+function setupMenuDrawer(env: PopupNavigationEnvironment, elements: NavigationElements): MenuDrawerApi {
+  let lastActiveElement: HTMLElement | null = null;
 
-function applySidebarCollapsed(elements: NavigationElements, collapsed: boolean): void {
-  elements.body.classList.toggle('sidebar-collapsed', collapsed);
-  if (elements.sidebarToggle) {
-    elements.sidebarToggle.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
-    elements.sidebarToggle.title = collapsed ? 'メニューを開く' : 'メニューを折りたたむ';
-  }
-}
+  const isOpen = (): boolean => elements.body.classList.contains('menu-open');
 
-function setupSidebarCollapse(env: PopupNavigationEnvironment, elements: NavigationElements): void {
-  const storageKey = `${env.storagePrefix}${SIDEBAR_COLLAPSED_KEY_SUFFIX}`;
-  applySidebarCollapsed(elements, readSidebarCollapsed(env.window, storageKey));
+  const applyOpen = (open: boolean): void => {
+    elements.body.classList.toggle('menu-open', open);
+    if (elements.sidebarToggle) {
+      elements.sidebarToggle.setAttribute('aria-pressed', open ? 'true' : 'false');
+      elements.sidebarToggle.title = open ? 'メニューを閉じる' : 'メニュー';
+    }
+    if (elements.menuDrawer) {
+      elements.menuDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+  };
+
+  const openMenu = (): void => {
+    if (isOpen()) return;
+    lastActiveElement = env.document.activeElement instanceof HTMLElement ? env.document.activeElement : null;
+    applyOpen(true);
+    env.window.setTimeout(() => {
+      const focusTarget =
+        elements.menuClose ||
+        (elements.menuDrawer?.querySelector<HTMLElement>('a[href],button,[tabindex]:not([tabindex="-1"])') ?? null);
+      focusTarget?.focus();
+    }, 0);
+  };
+
+  const closeMenu = (): void => {
+    if (!isOpen()) return;
+    applyOpen(false);
+    env.window.setTimeout(() => {
+      if (lastActiveElement) {
+        lastActiveElement.focus();
+        return;
+      }
+      elements.sidebarToggle?.focus();
+    }, 0);
+  };
+
+  const toggleMenu = (): void => {
+    if (isOpen()) {
+      closeMenu();
+      return;
+    }
+    openMenu();
+  };
 
   elements.sidebarToggle?.addEventListener('click', () => {
-    const nextCollapsed = !elements.body.classList.contains('sidebar-collapsed');
-    applySidebarCollapsed(elements, nextCollapsed);
-    writeSidebarCollapsed(env.window, storageKey, nextCollapsed);
+    toggleMenu();
   });
+
+  elements.menuClose?.addEventListener('click', () => {
+    closeMenu();
+  });
+
+  elements.menuScrim?.addEventListener('click', () => {
+    closeMenu();
+  });
+
+  env.window.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    closeMenu();
+  });
+
+  // ドロワー内のメニュー選択後は閉じる
+  elements.menuDrawer?.addEventListener('click', event => {
+    const target = event.target as HTMLElement | null;
+    if (!target) return;
+    const menuItem = target.closest<HTMLElement>('[data-target]');
+    if (!menuItem) return;
+    closeMenu();
+  });
+
+  // 通常ページ（file:// など）で開いた場合は初期状態で閉じておく
+  applyOpen(false);
+
+  return { closeMenu, openMenu, toggleMenu, isOpen };
 }
 
-function setupSidebarHome(env: PopupNavigationEnvironment, elements: NavigationElements): void {
+function setupSidebarHome(env: PopupNavigationEnvironment, elements: NavigationElements, menu: MenuDrawerApi): void {
   elements.sidebarHome?.addEventListener('click', () => {
+    menu.closeMenu();
     if (!env.isExtensionPage) {
       env.window.location.hash = '#pane-actions';
       return;
@@ -144,9 +198,12 @@ function setupSidebarHome(env: PopupNavigationEnvironment, elements: NavigationE
   });
 }
 
-function setupTabs(env: PopupNavigationEnvironment, elements: NavigationElements): void {
+function setupTabs(env: PopupNavigationEnvironment, elements: NavigationElements, menu: MenuDrawerApi): void {
   elements.navItems.forEach(item => {
     item.addEventListener('click', event => {
+      // ドロワー内/外どちらからでも、タブ切り替え時はメニューを閉じる
+      menu.closeMenu();
+
       if (!env.isExtensionPage) {
         // 通常ページ（file:// など）ではアンカーのデフォルト挙動に任せて `:target` を更新する。
         // `hashchange` で setActive が呼ばれるので、ここで何もしなくてOK。
@@ -166,6 +223,7 @@ function setupTabs(env: PopupNavigationEnvironment, elements: NavigationElements
   });
 
   env.window.addEventListener('hashchange', () => {
+    menu.closeMenu();
     setActive(elements, getTargetFromHash(env.document, env.window));
   });
 
@@ -185,7 +243,7 @@ export function setupPopupNavigation(env: PopupNavigationEnvironment): void {
     elements.ctaPill.disabled = true;
   }
 
-  setupSidebarCollapse(env, elements);
-  setupSidebarHome(env, elements);
-  setupTabs(env, elements);
+  const menu = setupMenuDrawer(env, elements);
+  setupSidebarHome(env, elements, menu);
+  setupTabs(env, elements, menu);
 }
