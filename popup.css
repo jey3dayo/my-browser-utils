@@ -21,7 +21,7 @@
 
 body {
   margin: 0;
-  width: 760px;
+  width: 800px;
   min-height: 540px;
   font-family: 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
   font-size: 14px;
@@ -33,7 +33,7 @@ body {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: 112px 1fr;
   height: 100%;
   min-height: 540px;
 }
@@ -86,6 +86,8 @@ body {
   font-size: 11px;
   letter-spacing: 0.4px;
   white-space: nowrap;
+  word-break: keep-all;
+  line-height: 1.15;
 }
 
 .nav-item:hover {
@@ -126,6 +128,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .content-header {
@@ -267,7 +270,7 @@ body.no-js:has(.pane:target) .pane.active:not(:target) {
   border-radius: var(--radius);
   padding: 16px;
   display: grid;
-  grid-template-columns: 1fr minmax(200px, 220px);
+  grid-template-columns: minmax(0, 1fr) minmax(200px, 220px);
   gap: 16px;
   align-items: start;
   box-shadow: var(--shadow);
