@@ -505,9 +505,7 @@
 
     const setActive = (targetId?: string): void => {
       const resolvedTargetId =
-        targetId ||
-        navItems.find(item => item.classList.contains('active'))?.dataset.target ||
-        panes[0]?.id;
+        targetId || navItems.find(item => item.classList.contains('active'))?.dataset.target || panes[0]?.id;
 
       if (!resolvedTargetId) return;
 
