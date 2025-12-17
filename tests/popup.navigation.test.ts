@@ -25,7 +25,6 @@ function createPopupDom(url = 'https://example.test/popup.html#pane-actions') {
         <a class="menu-item" data-target="pane-settings" href="#pane-settings"></a>
       </aside>
       <aside class="sidebar">
-        <button id="sidebar-home" type="button" data-tooltip="ホーム">home</button>
         <button id="sidebar-toggle" type="button" aria-label="メニューを切り替え" aria-pressed="false">toggle</button>
         <a class="nav-item active" data-target="pane-actions" href="#pane-actions" role="tab"></a>
         <a class="nav-item" data-target="pane-table" href="#pane-table" role="tab"></a>
@@ -118,23 +117,6 @@ describe('setupPopupNavigation', () => {
     expect(dom.window.document.getElementById('pane-table')?.classList.contains('active')).toBe(true);
     expect(dom.window.document.querySelector('.nav-item.active')?.getAttribute('data-target')).toBe('pane-table');
     expect(dom.window.document.querySelector('.nav-item.active')?.getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('sidebar home click navigates back to actions', async () => {
-    const dom = createPopupDom('https://example.test/popup.html#pane-settings');
-    setupPopupNavigation({
-      isExtensionPage: true,
-      storagePrefix: 'mbu:popup:',
-      window: dom.window,
-      document: dom.window.document,
-    });
-
-    dom.window.document.getElementById('sidebar-home')?.click();
-    await new Promise(resolve => dom.window.setTimeout(resolve, 0));
-
-    expect(dom.window.location.hash).toBe('#pane-actions');
-    expect(dom.window.document.getElementById('pane-actions')?.classList.contains('active')).toBe(true);
-    expect(dom.window.document.querySelector('.nav-item.active')?.getAttribute('data-target')).toBe('pane-actions');
   });
 
   it('non-extension pages update active pane via hashchange', () => {

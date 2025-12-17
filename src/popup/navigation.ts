@@ -13,7 +13,6 @@ type NavigationElements = {
   heroChip: HTMLSpanElement | null;
   ctaPill: HTMLButtonElement | null;
   sidebarToggle: HTMLButtonElement | null;
-  sidebarHome: HTMLButtonElement | null;
   menuDrawer: HTMLElement | null;
   menuScrim: HTMLElement | null;
   menuClose: HTMLButtonElement | null;
@@ -28,7 +27,6 @@ function getElements(document: Document): NavigationElements {
     heroChip: document.getElementById('hero-chip') as HTMLSpanElement | null,
     ctaPill: document.getElementById('cta-pill') as HTMLButtonElement | null,
     sidebarToggle: document.getElementById('sidebar-toggle') as HTMLButtonElement | null,
-    sidebarHome: document.getElementById('sidebar-home') as HTMLButtonElement | null,
     menuDrawer: document.getElementById('menu-drawer'),
     menuScrim: document.getElementById('menu-scrim'),
     menuClose: document.getElementById('menu-close') as HTMLButtonElement | null,
@@ -118,6 +116,8 @@ function setupMenuDrawer(env: PopupNavigationEnvironment, elements: NavigationEl
     }
     if (elements.menuDrawer) {
       elements.menuDrawer.setAttribute('aria-hidden', open ? 'false' : 'true');
+      // ドロワーが閉じている間はフォーカスできないようにする（aria-hidden警告を避ける）
+      elements.menuDrawer.toggleAttribute('inert', !open);
     }
   };
 
@@ -135,13 +135,34 @@ function setupMenuDrawer(env: PopupNavigationEnvironment, elements: NavigationEl
 
   const closeMenu = (): void => {
     if (!isOpen()) return;
-    applyOpen(false);
-    env.window.setTimeout(() => {
-      if (lastActiveElement) {
-        lastActiveElement.focus();
-        return;
+    // aria-hidden を付与する前にフォーカスを外へ退避させる（警告回避）
+    const active = env.document.activeElement;
+    if (active instanceof HTMLElement && elements.menuDrawer?.contains(active)) {
+      const body = elements.body;
+      const prevTabIndex = body.getAttribute('tabindex');
+      body.setAttribute('tabindex', '-1');
+      body.focus();
+      if (prevTabIndex === null) {
+        body.removeAttribute('tabindex');
+      } else {
+        body.setAttribute('tabindex', prevTabIndex);
       }
-      elements.sidebarToggle?.focus();
+    }
+
+    applyOpen(false);
+
+    env.window.setTimeout(() => {
+      let focusTarget = lastActiveElement;
+      if (focusTarget && !focusTarget.isConnected) {
+        focusTarget = null;
+      }
+      if (focusTarget && elements.menuDrawer?.contains(focusTarget)) {
+        focusTarget = null;
+      }
+      if (!focusTarget) {
+        focusTarget = elements.sidebarToggle;
+      }
+      focusTarget?.focus();
     }, 0);
   };
 
@@ -183,19 +204,6 @@ function setupMenuDrawer(env: PopupNavigationEnvironment, elements: NavigationEl
   applyOpen(false);
 
   return { closeMenu, openMenu, toggleMenu, isOpen };
-}
-
-function setupSidebarHome(env: PopupNavigationEnvironment, elements: NavigationElements, menu: MenuDrawerApi): void {
-  elements.sidebarHome?.addEventListener('click', () => {
-    menu.closeMenu();
-    if (!env.isExtensionPage) {
-      env.window.location.hash = '#pane-actions';
-      return;
-    }
-
-    setActive(elements, 'pane-actions');
-    safelyReplaceHash(env.window, '#pane-actions');
-  });
 }
 
 function setupTabs(env: PopupNavigationEnvironment, elements: NavigationElements, menu: MenuDrawerApi): void {
@@ -244,6 +252,5 @@ export function setupPopupNavigation(env: PopupNavigationEnvironment): void {
   }
 
   const menu = setupMenuDrawer(env, elements);
-  setupSidebarHome(env, elements, menu);
   setupTabs(env, elements, menu);
 }

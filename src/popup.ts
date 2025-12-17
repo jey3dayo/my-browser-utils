@@ -128,6 +128,10 @@ import { ensureOpenAiTokenConfigured } from './popup/token_guard';
   }
 
   async function initializePopup(): Promise<void> {
+    if (isExtensionPage) {
+      document.body.classList.add('is-extension');
+    }
+
     const autoEnableCheckbox = document.getElementById('auto-enable-sort') as HTMLInputElement | null;
     const enableButton = document.getElementById('enable-table-sort') as HTMLButtonElement | null;
     const addPatternButton = document.getElementById('add-pattern') as HTMLButtonElement | null;
@@ -154,7 +158,7 @@ import { ensureOpenAiTokenConfigured } from './popup/token_guard';
     const actionPromptInput = document.getElementById('action-prompt') as HTMLTextAreaElement | null;
     const saveActionButton = document.getElementById('save-action') as HTMLButtonElement | null;
     const clearActionButton = document.getElementById('clear-action') as HTMLButtonElement | null;
-    const deleteActionButton = document.getElementById('delete-action') as HTMLButtonElement | null;
+    const resetActionsButton = document.getElementById('reset-actions') as HTMLButtonElement | null;
     const actionList = document.getElementById('action-list') as HTMLDivElement | null;
 
     let contextActions: ContextAction[] = [];
@@ -310,7 +314,6 @@ import { ensureOpenAiTokenConfigured } from './popup/token_guard';
 
     const clearActionForm = (): void => {
       editingActionId = null;
-      if (deleteActionButton) deleteActionButton.disabled = true;
       if (actionTitleInput) actionTitleInput.value = '';
       if (actionPromptInput) actionPromptInput.value = '';
       if (actionKindSelect) actionKindSelect.value = 'text';
@@ -318,7 +321,6 @@ import { ensureOpenAiTokenConfigured } from './popup/token_guard';
 
     const setEditingAction = (targetAction: ContextAction | null): void => {
       editingActionId = targetAction?.id ?? null;
-      if (deleteActionButton) deleteActionButton.disabled = !editingActionId;
       if (!targetAction) {
         clearActionForm();
         return;
@@ -530,11 +532,14 @@ import { ensureOpenAiTokenConfigured } from './popup/token_guard';
       setEditingAction(null);
     });
 
-    deleteActionButton?.addEventListener('click', () => {
-      if (!editingActionId) return;
-      void persistContextActions(contextActions.filter(item => item.id !== editingActionId));
-      setEditingAction(null);
-      showNotification('削除しました');
+    resetActionsButton?.addEventListener('click', () => {
+      const ok = window.confirm('登録アクションを初期状態に戻します。よろしいですか？');
+      if (!ok) return;
+      void (async () => {
+        await persistContextActions([...DEFAULT_CONTEXT_ACTIONS]);
+        setEditingAction(null);
+        showNotification('リセットしました');
+      })();
     });
 
     // 初期表示のロード（失敗しても、ボタン操作自体は動くようにしておく）

@@ -48,10 +48,6 @@
     | { ok: false; error: string };
 
   let tableObserver: MutationObserver | null = null;
-  let autoSummaryTimer: number | null = null;
-  let autoSummaryRequestId = 0;
-  let lastAutoSummaryText = '';
-  let lastAutoSummaryResult: { summary: string; source: SummarySource } | null = null;
   let overlayEls: {
     host: HTMLDivElement;
     title: HTMLDivElement;
@@ -70,6 +66,7 @@
   let overlayEventText = '';
   let overlayCalendarUrl = '';
   let overlayAnchor: DOMRect | null = null;
+  let overlayPinned = false;
 
   // ========================================
   // 1. ユーティリティ関数
@@ -257,13 +254,10 @@
   document.addEventListener('mouseup', event => {
     const selectedText = window.getSelection()?.toString().trim() ?? '';
     if (selectedText) {
-      void storageLocalSet({
-        selectedText,
-        selectedTextUpdatedAt: Date.now(),
+      void storageLocalSet({ selectedText, selectedTextUpdatedAt: Date.now() }).catch(() => {
+        // ストレージが使えない環境では黙って諦める
       });
     }
-
-    void maybeAutoSummarizeSelection(selectedText, event);
   });
 
   function showNotification(message: string): void {
@@ -368,6 +362,8 @@
     const legacy = document.getElementById('my-browser-utils-summary');
     if (legacy) legacy.remove();
 
+    overlayPinned = false;
+
     const host = document.createElement('div');
     host.id = 'my-browser-utils-overlay';
     host.style.cssText = `
@@ -406,6 +402,46 @@
         padding: 12px 14px;
         background: #f7f7f7;
         border-bottom: 1px solid rgba(0,0,0,0.08);
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .drag-handle {
+        appearance: none;
+        border: none;
+        background: transparent;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border-radius: 8px;
+        cursor: grab;
+        touch-action: none;
+        display: grid;
+        place-items: center;
+        flex: 0 0 auto;
+      }
+
+      .drag-handle::before {
+        content: '';
+        width: 14px;
+        height: 14px;
+        background:
+          radial-gradient(circle, rgba(0,0,0,0.35) 1.2px, transparent 1.4px) 0 0 / 6px 6px;
+        opacity: 0.9;
+      }
+
+      .drag-handle:hover {
+        background: rgba(0,0,0,0.06);
+      }
+
+      :host(.dragging) .drag-handle {
+        cursor: grabbing;
       }
 
       .title {
@@ -495,6 +531,15 @@
     const header = document.createElement('div');
     header.className = 'header';
 
+    const headerLeft = document.createElement('div');
+    headerLeft.className = 'header-left';
+
+    const dragHandle = document.createElement('button');
+    dragHandle.type = 'button';
+    dragHandle.className = 'drag-handle';
+    dragHandle.title = 'ドラッグして移動';
+    dragHandle.setAttribute('aria-label', 'ドラッグして移動');
+
     const title = document.createElement('div');
     title.className = 'title';
 
@@ -526,7 +571,9 @@
     actions.appendChild(openCalendarButton);
     actions.appendChild(copyLinkButton);
     actions.appendChild(closeButton);
-    header.appendChild(title);
+    headerLeft.appendChild(dragHandle);
+    headerLeft.appendChild(title);
+    header.appendChild(headerLeft);
     header.appendChild(actions);
 
     const body = document.createElement('div');
@@ -550,6 +597,66 @@
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
         closeOverlay();
+      }
+    };
+
+    let dragging = false;
+    let dragPointerId: number | null = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    const clampPosition = (left: number, top: number): { left: number; top: number } => {
+      const margin = 12;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+      const hostRect = host.getBoundingClientRect();
+      const width = hostRect.width || 520;
+      const height = hostRect.height || 300;
+      return {
+        left: Math.min(Math.max(margin, left), Math.max(margin, viewportW - width - margin)),
+        top: Math.min(Math.max(margin, top), Math.max(margin, viewportH - height - margin)),
+      };
+    };
+
+    const startDrag = (event: PointerEvent): void => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      overlayPinned = true;
+      overlayAnchor = null;
+
+      const rect = host.getBoundingClientRect();
+      dragOffsetX = event.clientX - rect.left;
+      dragOffsetY = event.clientY - rect.top;
+      dragging = true;
+      dragPointerId = event.pointerId;
+      host.classList.add('dragging');
+      try {
+        dragHandle.setPointerCapture(event.pointerId);
+      } catch {
+        // no-op
+      }
+    };
+
+    const moveDrag = (event: PointerEvent): void => {
+      if (!dragging) return;
+      if (dragPointerId !== null && event.pointerId !== dragPointerId) return;
+      const nextLeft = event.clientX - dragOffsetX;
+      const nextTop = event.clientY - dragOffsetY;
+      const clamped = clampPosition(nextLeft, nextTop);
+      host.style.left = `${Math.round(clamped.left)}px`;
+      host.style.top = `${Math.round(clamped.top)}px`;
+    };
+
+    const endDrag = (event: PointerEvent): void => {
+      if (!dragging) return;
+      if (dragPointerId !== null && event.pointerId !== dragPointerId) return;
+      dragging = false;
+      dragPointerId = null;
+      host.classList.remove('dragging');
+      try {
+        dragHandle.releasePointerCapture(event.pointerId);
+      } catch {
+        // no-op
       }
     };
 
@@ -622,6 +729,10 @@
     openCalendarButton.addEventListener('click', onOpenCalendar);
     copyLinkButton.addEventListener('click', onCopyLink);
     eventButton.addEventListener('click', onEvent);
+    dragHandle.addEventListener('pointerdown', startDrag);
+    dragHandle.addEventListener('pointermove', moveDrag);
+    dragHandle.addEventListener('pointerup', endDrag);
+    dragHandle.addEventListener('pointercancel', endDrag);
 
     overlayCleanup = () => {
       window.removeEventListener('keydown', onKeyDown, true);
@@ -630,6 +741,10 @@
       openCalendarButton.removeEventListener('click', onOpenCalendar);
       copyLinkButton.removeEventListener('click', onCopyLink);
       eventButton.removeEventListener('click', onEvent);
+      dragHandle.removeEventListener('pointerdown', startDrag);
+      dragHandle.removeEventListener('pointermove', moveDrag);
+      dragHandle.removeEventListener('pointerup', endDrag);
+      dragHandle.removeEventListener('pointercancel', endDrag);
     };
 
     (document.documentElement ?? document.body ?? document).appendChild(host);
@@ -660,6 +775,7 @@
     overlayEventText = '';
     overlayCalendarUrl = '';
     overlayAnchor = null;
+    overlayPinned = false;
   }
 
   function setOverlayTitle(text: string): void {
@@ -747,6 +863,18 @@
     const hostRect = els.host.getBoundingClientRect();
     const width = hostRect.width || 520;
     const height = hostRect.height || 300;
+
+    if (overlayPinned) {
+      const left = Number.parseFloat(els.host.style.left || 'NaN');
+      const top = Number.parseFloat(els.host.style.top || 'NaN');
+      const nextLeft = Number.isFinite(left) ? left : hostRect.left;
+      const nextTop = Number.isFinite(top) ? top : hostRect.top;
+      const clampedLeft = Math.min(Math.max(margin, nextLeft), Math.max(margin, viewportW - width - margin));
+      const clampedTop = Math.min(Math.max(margin, nextTop), Math.max(margin, viewportH - height - margin));
+      els.host.style.left = `${Math.round(clampedLeft)}px`;
+      els.host.style.top = `${Math.round(clampedTop)}px`;
+      return;
+    }
 
     const anchor = overlayAnchor;
     if (!anchor) {
@@ -905,89 +1033,6 @@
     requestAnimationFrame(positionOverlay);
   }
 
-  async function maybeAutoSummarizeSelection(selectedText: string, event: MouseEvent): Promise<void> {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('#my-browser-utils-summary')) return;
-
-    const MIN_CHARS = 1;
-    const trimmed = selectedText.trim();
-    if (trimmed.length < MIN_CHARS) return;
-
-    if (trimmed === lastAutoSummaryText && lastAutoSummaryResult) {
-      showSummaryOverlay({
-        action: 'showSummaryOverlay',
-        status: 'ready',
-        summary: lastAutoSummaryResult.summary,
-        source: lastAutoSummaryResult.source,
-      });
-      return;
-    }
-    lastAutoSummaryText = trimmed;
-    lastAutoSummaryResult = null;
-
-    if (autoSummaryTimer) {
-      window.clearTimeout(autoSummaryTimer);
-      autoSummaryTimer = null;
-    }
-
-    const requestId = ++autoSummaryRequestId;
-    autoSummaryTimer = window.setTimeout(() => {
-      void (async () => {
-        const currentSelection = window.getSelection()?.toString().trim() ?? '';
-        if (currentSelection && currentSelection !== trimmed) {
-          return;
-        }
-
-        showNotification('要約中...');
-
-        const summaryTarget: SummaryTarget = {
-          text: trimmed,
-          source: 'selection',
-          title: document.title ?? '',
-          url: window.location.href,
-        };
-
-        try {
-          const response = await sendMessageToBackground<ContentToBackgroundMessage, SummarizeTextResponse>({
-            action: 'summarizeText',
-            target: summaryTarget,
-          });
-
-          if (requestId !== autoSummaryRequestId) return;
-
-          if (!response.ok) {
-            showSummaryOverlay({
-              action: 'showSummaryOverlay',
-              status: 'error',
-              source: 'selection',
-              error: response.error,
-            });
-            return;
-          }
-
-          lastAutoSummaryResult = {
-            summary: response.summary,
-            source: response.source,
-          };
-          showSummaryOverlay({
-            action: 'showSummaryOverlay',
-            status: 'ready',
-            summary: response.summary,
-            source: response.source,
-          });
-        } catch (error) {
-          if (requestId !== autoSummaryRequestId) return;
-          showSummaryOverlay({
-            action: 'showSummaryOverlay',
-            status: 'error',
-            source: 'selection',
-            error: error instanceof Error ? error.message : '要約に失敗しました',
-          });
-        }
-      })();
-    }, 450);
-  }
-
   function sendMessageToBackground<TRequest, TResponse>(message: TRequest): Promise<TResponse> {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage(message, (response: TResponse) => {
@@ -1029,6 +1074,11 @@
 
   function storageSyncGet(keys: string[]): Promise<unknown> {
     return new Promise((resolve, reject) => {
+      if (!chrome.storage?.sync) {
+        resolve({});
+        return;
+      }
+
       chrome.storage.sync.get(keys, items => {
         const err = chrome.runtime.lastError;
         if (err) {
@@ -1042,6 +1092,11 @@
 
   function storageLocalGet(keys: string[]): Promise<unknown> {
     return new Promise((resolve, reject) => {
+      if (!chrome.storage?.local) {
+        resolve({});
+        return;
+      }
+
       chrome.storage.local.get(keys, items => {
         const err = chrome.runtime.lastError;
         if (err) {
@@ -1055,6 +1110,11 @@
 
   function storageLocalSet(items: Record<string, unknown>): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (!chrome.storage?.local) {
+        resolve();
+        return;
+      }
+
       chrome.storage.local.set(items, () => {
         const err = chrome.runtime.lastError;
         if (err) {

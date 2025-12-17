@@ -109,20 +109,31 @@ const DEFAULT_CONTEXT_ACTIONS: ContextAction[] = [
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log('My Browser Utils installed');
-  void refreshContextMenus();
+  void scheduleRefreshContextMenus();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void refreshContextMenus();
+  void scheduleRefreshContextMenus();
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== 'sync') return;
   if (!('contextActions' in changes)) return;
-  void refreshContextMenus();
+  void scheduleRefreshContextMenus();
 });
 
-void refreshContextMenus();
+let contextMenuRefreshQueue: Promise<void> = Promise.resolve();
+
+async function scheduleRefreshContextMenus(): Promise<void> {
+  contextMenuRefreshQueue = contextMenuRefreshQueue
+    .catch(() => {
+      // 直前の更新が失敗しても、次回の更新を止めない
+    })
+    .then(() => refreshContextMenus());
+  return contextMenuRefreshQueue;
+}
+
+void scheduleRefreshContextMenus();
 
 chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
   if (typeof info.menuItemId !== 'string') return;
@@ -138,6 +149,12 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
   void (async () => {
     const selection = info.selectionText?.trim() ?? '';
     const initialSource: SummarySource = selection ? 'selection' : 'page';
+    const selectionSecondary = selection
+      ? `選択範囲:\n${selection.length > 4000 ? `${selection.slice(0, 4000)}…` : selection}`
+      : undefined;
+    const tokenHintSecondary = selectionSecondary
+      ? `${selectionSecondary}\n\nOpenAI API Token未設定の場合は、拡張機能のポップアップ「設定」タブで設定してください。`
+      : 'OpenAI API Token未設定の場合は、拡張機能のポップアップ「設定」タブで設定してください。';
     const actionId = menuItemId.slice(CONTEXT_MENU_ACTION_PREFIX.length);
 
     try {
@@ -162,6 +179,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
         mode: action.kind === 'event' ? 'event' : 'text',
         source: initialSource,
         title: `${action.title}（${titleSuffix}）`,
+        secondary: selectionSecondary,
       });
 
       const target: SummaryTarget = selection
@@ -187,7 +205,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
             source: target.source,
             title: resolvedTitle,
             primary: result.error,
-            secondary: 'OpenAI API Token未設定の場合は、拡張機能のポップアップ「設定」タブで設定してください。',
+            secondary: tokenHintSecondary,
           });
           return;
         }
@@ -203,6 +221,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
             primary: `日時の解析に失敗しました（Googleカレンダーリンクを生成できません）\nstart: ${result.event.start}${
               result.event.end ? `\nend: ${result.event.end}` : ''
             }`,
+            secondary: selectionSecondary,
           });
           return;
         }
@@ -214,6 +233,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
           source: target.source,
           title: resolvedTitle,
           primary: formatEventText(result.event),
+          secondary: selectionSecondary,
           calendarUrl,
         });
         return;
@@ -228,6 +248,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
           source: target.source,
           title: resolvedTitle,
           primary: 'プロンプトが空です',
+          secondary: selectionSecondary,
         });
         return;
       }
@@ -241,7 +262,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
           source: target.source,
           title: resolvedTitle,
           primary: result.error,
-          secondary: 'OpenAI API Token未設定の場合は、拡張機能のポップアップ「設定」タブで設定してください。',
+          secondary: tokenHintSecondary,
         });
         return;
       }
@@ -253,6 +274,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
         source: target.source,
         title: resolvedTitle,
         primary: result.text,
+        secondary: selectionSecondary,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '要約に失敗しました';
@@ -271,25 +293,53 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
 });
 
 async function refreshContextMenus(): Promise<void> {
-  await new Promise<void>(resolve => {
-    chrome.contextMenus.removeAll(() => resolve());
-  });
-
-  chrome.contextMenus.create({
-    id: CONTEXT_MENU_ROOT_ID,
-    title: 'My Browser Utils',
-    contexts: ['page', 'selection'],
-  });
-
-  const actions = await ensureContextActionsInitialized();
-  actions.forEach(action => {
-    chrome.contextMenus.create({
-      id: `${CONTEXT_MENU_ACTION_PREFIX}${action.id}`,
-      parentId: CONTEXT_MENU_ROOT_ID,
-      title: action.title,
-      contexts: ['page', 'selection'],
+  try {
+    await new Promise<void>(resolve => {
+      chrome.contextMenus.removeAll(() => resolve());
     });
-  });
+
+    await new Promise<void>((resolve, reject) => {
+      chrome.contextMenus.create(
+        {
+          id: CONTEXT_MENU_ROOT_ID,
+          title: 'My Browser Utils',
+          contexts: ['page', 'selection'],
+        },
+        () => {
+          const err = chrome.runtime.lastError;
+          if (err) {
+            reject(new Error(err.message));
+            return;
+          }
+          resolve();
+        },
+      );
+    });
+
+    const actions = await ensureContextActionsInitialized();
+    for (const action of actions) {
+      await new Promise<void>((resolve, reject) => {
+        chrome.contextMenus.create(
+          {
+            id: `${CONTEXT_MENU_ACTION_PREFIX}${action.id}`,
+            parentId: CONTEXT_MENU_ROOT_ID,
+            title: action.title,
+            contexts: ['page', 'selection'],
+          },
+          () => {
+            const err = chrome.runtime.lastError;
+            if (err) {
+              reject(new Error(err.message));
+              return;
+            }
+            resolve();
+          },
+        );
+      });
+    }
+  } catch (error) {
+    console.error('refreshContextMenus failed:', error);
+  }
 }
 
 async function ensureContextActionsInitialized(): Promise<ContextAction[]> {
