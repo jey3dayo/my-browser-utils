@@ -10,6 +10,7 @@
 - Bundling via `esbuild` into `dist/`:
   - Entry points are bundled as browser-friendly IIFEs.
   - Target is modern browsers (`ES2020`) with sourcemaps.
+- Package manager is `pnpm` (scripts and CI assume `pnpm run ...`); keep local tooling and CI Node/pnpm versions aligned.
 
 ## Runtime Boundaries (important for design)
 - **Content script** runs in the page context: DOM access, overlays, table sorting.
@@ -36,3 +37,4 @@
 - Tests: `vitest` with `jsdom`; tests stub the `chrome` global.
 - Formatting: Ultracite (Biome) with single quotes and wider line width.
 - Linting: Ultracite (Biome) ruleset, with Chrome extension globals configured.
+- CI: GitHub Actions runs lint + tests on push/PR to catch drift early.

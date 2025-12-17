@@ -13,12 +13,13 @@ My Browser Utils is a personal Chrome extension that adds small, high-leverage u
 - Support “auto enable” via:
   - A global toggle (enable on all sites), and/or
   - Domain/path patterns saved by the user (wildcard `*` patterns; protocol is ignored).
+    - Unless a pattern explicitly includes `?` or `#`, query/hash suffixes are treated as optional; simple patterns tolerate an optional trailing `/`.
 - Handle dynamic pages by watching DOM mutations and enabling sorting for newly added tables.
 
 ### AI actions (OpenAI integration)
-- Actions are invoked from the browser context menu and the popup “Actions” view; the input is either:
-  - The current selection (preferred when present), or
-  - A timestamped “recent selection” cache (treated as fresh for ~30s; local fallback), or
+- Actions are invoked from the browser context menu and the popup “Actions” view; target text is resolved as:
+  - Prefer the current selection (context-menu `selectionText` or live `window.getSelection()`), or
+  - For popup-triggered flows, fall back to a timestamped “recent selection” cache (treated as fresh for ~30s; local-only), or
   - Extracted page text (fallback).
 - Built-in actions exist (summarize/translate/calendar), and user-defined actions are editable in the popup UI.
 - Actions support simple template variables (e.g. `{{text}}`, `{{title}}`, `{{url}}`, `{{source}}`) to reuse metadata in prompts.
@@ -29,6 +30,7 @@ My Browser Utils is a personal Chrome extension that adds small, high-leverage u
 - “Works where you are”: features are surfaced via the popup (settings/controls) and context menu (actions).
 - Keep UI strings and default prompts Japanese-first (match the existing UI tone), unless intentionally localizing.
 - Fail loudly but safely: show a clear in-page/popup message instead of silently doing nothing.
+- Prefer accessible UI behaviors: keyboard-friendly navigation and explicit ARIA state updates (especially in the popup).
 
 ## Data & Privacy Expectations
 - Store non-sensitive settings (domain patterns, action definitions) in synced extension storage.

@@ -2,6 +2,7 @@
 
 ## High-level Organization
 - Root contains extension assets (`manifest.json`, `popup.html`, CSS, icons/images).
+- `popup_bootstrap.js` loads the bundled popup script (`dist/popup.js`) and shows a clear banner when build output is missing (dev ergonomics).
 - `src/` contains TypeScript source for each runtime surface (background/content/popup) plus shared utilities.
 - `src/` is intentionally modular: shared helpers live under `src/utils/` and small feature helpers can live under feature folders like `src/popup/`.
 - `dist/` is generated build output (bundled JS); it is treated as an artifact, not a source of truth.
@@ -26,6 +27,7 @@
   - Normalize callback APIs into Promises
   - Handle missing APIs in non-extension contexts (tests)
   - Surface `lastError` reliably
+- Where direct exports are awkward (e.g., content-script internals), tests may opt-in to a small `globalThis.__MBU_TEST_HOOKS__` surface to reach specific helpers without changing production APIs.
 - Cross-cutting features prefer “thin shared modules” (e.g. OpenAI fetch/JSON parsing/date handling) rather than large shared frameworks.
 
 ## Naming & Conventions
