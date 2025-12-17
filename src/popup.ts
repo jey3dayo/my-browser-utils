@@ -1,5 +1,4 @@
 import { Result } from '@praha/byethrow';
-
 import {
   addHours,
   formatLocalYyyyMmDdFromDate,

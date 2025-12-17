@@ -1,6 +1,5 @@
 import { Result } from '@praha/byethrow';
 import { describe, expect, it, vi } from 'vitest';
-
 import { ensureOpenAiTokenConfigured } from '../src/popup/token_guard';
 
 describe('ensureOpenAiTokenConfigured', () => {
@@ -10,7 +9,12 @@ describe('ensureOpenAiTokenConfigured', () => {
     const navigateToPane = vi.fn();
     const focusTokenInput = vi.fn();
 
-    const result = await ensureOpenAiTokenConfigured({ storageLocalGet, showNotification, navigateToPane, focusTokenInput });
+    const result = await ensureOpenAiTokenConfigured({
+      storageLocalGet,
+      showNotification,
+      navigateToPane,
+      focusTokenInput,
+    });
     expect(Result.isSuccess(result)).toBe(true);
 
     expect(showNotification).not.toHaveBeenCalled();
@@ -24,7 +28,12 @@ describe('ensureOpenAiTokenConfigured', () => {
     const navigateToPane = vi.fn();
     const focusTokenInput = vi.fn();
 
-    const result = await ensureOpenAiTokenConfigured({ storageLocalGet, showNotification, navigateToPane, focusTokenInput });
+    const result = await ensureOpenAiTokenConfigured({
+      storageLocalGet,
+      showNotification,
+      navigateToPane,
+      focusTokenInput,
+    });
     expect(Result.isFailure(result)).toBe(true);
     if (Result.isFailure(result)) {
       expect(result.error).toBe('missing-token');
@@ -46,7 +55,12 @@ describe('ensureOpenAiTokenConfigured', () => {
     const navigateToPane = vi.fn();
     const focusTokenInput = vi.fn();
 
-    const result = await ensureOpenAiTokenConfigured({ storageLocalGet, showNotification, navigateToPane, focusTokenInput });
+    const result = await ensureOpenAiTokenConfigured({
+      storageLocalGet,
+      showNotification,
+      navigateToPane,
+      focusTokenInput,
+    });
     expect(Result.isFailure(result)).toBe(true);
     if (Result.isFailure(result)) {
       expect(result.error).toBe('storage-error');

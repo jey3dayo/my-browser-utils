@@ -1,6 +1,5 @@
 import { Result } from '@praha/byethrow';
 import { describe, expect, it, vi } from 'vitest';
-
 import {
   extractChatCompletionText,
   extractOpenAiApiErrorMessage,

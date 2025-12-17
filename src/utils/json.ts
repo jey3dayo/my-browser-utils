@@ -20,4 +20,3 @@ export function safeParseJsonObject<T>(text: string): Result.Result<T, 'parse-er
     catch: () => 'parse-error' as const,
   });
 }
-

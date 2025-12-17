@@ -1,5 +1,4 @@
 import { Result } from '@praha/byethrow';
-
 import { toErrorMessage } from './errors';
 
 export function extractChatCompletionText(json: unknown): string | null {
@@ -106,4 +105,3 @@ export function fetchOpenAiChatCompletionOk(
     }),
   );
 }
-

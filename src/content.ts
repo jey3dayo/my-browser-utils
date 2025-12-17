@@ -359,7 +359,8 @@
     const bodyText = document.body?.innerText ?? '';
     const MAX_RETURN_CHARS = 60_000;
     const normalized = normalizeText(bodyText);
-    const clipped = normalized.length > MAX_RETURN_CHARS ? `${normalized.slice(0, MAX_RETURN_CHARS)}\n\n(以下略)` : normalized;
+    const clipped =
+      normalized.length > MAX_RETURN_CHARS ? `${normalized.slice(0, MAX_RETURN_CHARS)}\n\n(以下略)` : normalized;
     return {
       text: clipped,
       source: 'page',

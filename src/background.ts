@@ -1,7 +1,6 @@
 // Background Service Worker
 
 import { Result } from '@praha/byethrow';
-
 import {
   addHours,
   formatLocalYyyyMmDdFromDate,
@@ -626,7 +625,12 @@ async function summarizeWithOpenAI(target: SummaryTarget): Promise<BackgroundRes
     ],
   };
 
-  const summaryResult = await fetchOpenAiChatCompletionText(fetch, settings.token, body, '要約結果の取得に失敗しました');
+  const summaryResult = await fetchOpenAiChatCompletionText(
+    fetch,
+    settings.token,
+    body,
+    '要約結果の取得に失敗しました',
+  );
   if (Result.isFailure(summaryResult)) {
     return { ok: false, error: summaryResult.error };
   }
