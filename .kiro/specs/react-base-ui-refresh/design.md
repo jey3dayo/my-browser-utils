@@ -5,18 +5,22 @@
 ## 1. Overview
 
 ### 1.1 Goals (from requirements)
+
 - Refresh the Popup UI and the in-page overlay UI by replacing the UI layer with React and Base UI (`@base-ui/react`) while preserving existing functionality and runtime boundaries. (1, 2)
 - Preserve the popup’s 3-pane information architecture (Actions / Table / Settings) and layout intent (pane structure, sizing, scroll regions). (1, 3)
 - Keep overlay isolation and stability across arbitrary sites (Shadow DOM, no CSS leakage, predictable portals). (8, 9)
 - Maintain quality gates: build, lint, and tests. (12)
 
 ### 1.2 Non-goals
+
 - Changing background-service-worker responsibilities (OpenAI calls remain in background). (4, 11)
 - Introducing a backend service or new data persistence model. (1, 11)
 - Rewriting unrelated logic beyond what is required to support the new UI layer.
 
 ## 2. Discovery Summary (Light)
+
 This is an **extension / integration** feature. Discovery focused on:
+
 - Current repository boundaries (popup/content/background) and message flows.
 - Base UI support for Shadow DOM + portal scoping and toast notifications.
 
@@ -25,7 +29,9 @@ Details and sources are recorded in `.kiro/specs/react-base-ui-refresh/research.
 ## 3. Architecture Pattern & Boundary Map
 
 ### 3.1 High-level architecture
+
 The extension remains a Manifest V3 system with **three runtime surfaces**:
+
 - **Popup**: UI + settings surface (React + Base UI).
 - **Content script**: table sorting + in-page overlay (React + Base UI in Shadow DOM).
 - **Background service worker**: privileged APIs, context menus, OpenAI API calls, orchestration.
@@ -60,6 +66,7 @@ flowchart LR
 ```
 
 ### 3.2 Architectural pattern
+
 - **UI as a thin layer**: React components render and orchestrate user interactions, but business logic remains in small typed services/modules.
 - **Typed message contracts**: discriminated unions remain the boundary between runtimes (popup ↔ background, background ↔ content).
 - **Shadow DOM isolation for overlay**: overlay is rendered inside a ShadowRoot; Base UI portals are explicitly scoped to that ShadowRoot. (9)
@@ -67,18 +74,23 @@ flowchart LR
 ## 4. Technology Stack & Alignment
 
 ### 4.1 New/updated dependencies (UI layer)
+
 - `react` + `react-dom` for popup and overlay UIs. (2)
 - `@base-ui/react` for accessible UI primitives (Tabs, Dialog, Select, Toast, Tooltip, etc.). (2, 13)
 
 ### 4.2 Build and typecheck alignment
+
 The repository uses `esbuild` bundling and TypeScript `strict`.
 Design expectations:
+
 - TypeScript config enables JSX typing for `.tsx` modules (e.g., `jsx: react-jsx`). (12)
 - ESLint and Vitest configurations include `.tsx` where needed. (12)
 - Bundling remains IIFE outputs into `dist/` to preserve manifest integration and `popup_bootstrap.js` loading. (12)
 
 ### 4.3 Styling strategy alignment (unstyled primitives)
+
 Base UI is unstyled; the design introduces:
+
 - A small token system (CSS variables) for both popup and overlay.
 - A strict separation:
   - Popup visuals live in `popup.css` (document-level CSS).
@@ -88,6 +100,7 @@ Base UI is unstyled; the design introduces:
 ## 5. Components & Interface Contracts
 
 ### 5.1 Shared types (no `any`)
+
 The design keeps and extends existing shared types.
 
 ```ts
@@ -112,6 +125,7 @@ export type ExtractedEvent = {
 ```
 
 ### 5.2 Message contracts (runtime boundaries)
+
 To preserve stability, message `action` strings and response shapes remain compatible with the current system. (4, 6, 8, 11)
 
 ```ts
@@ -150,6 +164,7 @@ export type ContentMessage =
 ```
 
 ### 5.3 Storage contracts
+
 Storage placement remains aligned with product/tech steering. (7, 11)
 
 ```ts
@@ -168,6 +183,7 @@ export type LocalStorageData = {
 ```
 
 ### 5.4 UI service interfaces (typed, testable)
+
 The React UI layer calls a small set of services so tests can mock behavior without relying on DOM structure. (12)
 
 ```ts
@@ -182,18 +198,22 @@ export type PopupRuntime = {
 ## 6. Popup Design (React + Base UI)
 
 ### 6.1 Layout invariants (preserve “skeleton”)
+
 - 3-pane structure remains: `pane-actions`, `pane-table`, `pane-settings`. (1, 3)
 - Scroll behavior remains: the content body is scrollable per pane where applicable. (1)
 - Sidebar and drawer semantics remain (rail + drawer for navigation). Visual styling may change. (1, 3)
 
 ### 6.2 Navigation and drawer
+
 **Tabs**:
+
 - Use Base UI `Tabs` as the canonical navigation state for the three panes. (3, 13)
 - Maintain URL-hash parity by synchronizing `Tabs` value ↔ `location.hash`:
   - On mount, derive initial tab from hash.
   - On tab change, update hash.
 
 **Drawer**:
+
 - Use Base UI `Dialog` to implement the “menu drawer” on narrow widths or when invoked by the menu button. (3, 13)
 - `Dialog` provides:
   - Scrim click to close. (3)
@@ -201,7 +221,9 @@ export type PopupRuntime = {
   - Focus trapping and return-focus behavior. (13)
 
 ### 6.3 Actions pane
+
 Responsibilities (preserve behaviors): (4, 5)
+
 - Load actions from `chrome.storage.sync` (with normalization and defaults).
 - Render one trigger per action.
 - Execute action via background `runContextAction` (never call OpenAI directly).
@@ -213,18 +235,23 @@ Responsibilities (preserve behaviors): (4, 5)
 - Maintain the action editor (title/kind/prompt) with save/clear/reset and delete.
 
 Base UI components used:
+
 - `Field` + `Input`/`Textarea` for form semantics. (13)
 - `Select` for action kind (`text` / `event`). (5, 13)
 - `Toast` for success/error notifications (copy success/failure, save errors, invalid background response). (4, 11)
 
 ### 6.4 Table pane
+
 Responsibilities (preserve behaviors): (6, 10)
+
 - “Enable table sort” sends `{ action: 'enableTableSort' }` to the active tab.
 - “Auto enable sort” is persisted in sync storage.
 - URL pattern add/remove persists to sync storage and updates the list.
 
 ### 6.5 Settings pane (OpenAI)
+
 Responsibilities (preserve behaviors): (7, 11)
+
 - Store token in `chrome.storage.local` only.
 - Store custom prompt in `chrome.storage.local`.
 - Token visibility toggle changes input masking only.
@@ -235,14 +262,17 @@ Responsibilities (preserve behaviors): (7, 11)
 ## 7. Content Script Overlay Design (React + Base UI in Shadow DOM)
 
 ### 7.1 Mounting and idempotency
+
 The overlay remains Shadow DOM-mounted for CSS isolation. (9)
 
 Design contract:
+
 - One host element (stable id, e.g., `my-browser-utils-overlay`) exists at most once.
 - One React root exists at most once per page.
 - A global guard (host id + an attached property on the host or a `globalThis` symbol) prevents double-mount. (9, 12)
 
 ### 7.2 Overlay view model
+
 The overlay UI is driven by a single view model updated by incoming `showActionOverlay` / `showSummaryOverlay` messages. (8)
 
 ```ts
@@ -265,12 +295,15 @@ export type OverlayViewModel = {
 ```
 
 ### 7.3 Positioning and pinning
+
 - When `source === 'selection'`, compute an anchor rect from the current selection and position the overlay near it. (8)
 - If the user drags the overlay, set `pinned = true` and switch to fixed `position` with viewport clamping. (8, 9)
 - If pinned, ignore subsequent anchor updates unless the user unpins. (8)
 
 ### 7.4 Overlay actions and notifications
+
 Overlay UI actions: (8)
+
 - Copy primary text (or event text) to clipboard.
 - For event results:
   - Open calendar URL in a new tab.
@@ -279,15 +312,18 @@ Overlay UI actions: (8)
 - Close overlay.
 
 Notification surface:
+
 - Use Base UI `Toast` within the ShadowRoot for copy success/failure and error feedback. (8, 11)
 - Keep existing lightweight, non-overlay notifications (e.g., table-sort activation) as page-level toasts, as they are not part of the overlay subtree.
 
 ### 7.5 Portal scoping inside Shadow DOM
+
 Any Base UI component that portals (e.g., `Toast.Portal`, `Dialog.Portal`, `Tooltip.Portal`) must set `container` to the overlay ShadowRoot (or a dedicated portal root inside it). (2, 9)
 
 ## 8. Data Flow and Sequences
 
 ### 8.1 Popup action execution
+
 ```mermaid
 sequenceDiagram
   participant U as User
@@ -309,6 +345,7 @@ sequenceDiagram
 ```
 
 ### 8.2 Context menu execution (overlay-first)
+
 ```mermaid
 sequenceDiagram
   participant U as User
@@ -327,12 +364,16 @@ sequenceDiagram
 ```
 
 ## 9. Error Handling Strategy
+
 Aligned with steering: fail loudly but safely; prefer typed results at boundaries. (4, 11)
+
 - Popup and overlay UIs surface errors via Toast notifications and/or inline error states.
 - Message boundary failures (missing response, runtime errors) render a safe fallback (empty output and a notification). (4)
 
 ## 10. Accessibility & Keyboard Support
+
 Primary approach: rely on Base UI’s accessible behaviors and ensure consistent focus styling. (13)
+
 - Tabs provide keyboard navigation (arrow keys / Tab focus order).
 - Dialog-based drawer supports Escape close, focus trap, return focus.
 - All icon-only buttons have accessible names (`aria-label`) and visible focus indicators.
@@ -341,41 +382,47 @@ Primary approach: rely on Base UI’s accessible behaviors and ensure consistent
 ## 11. Testing & Validation
 
 ### 11.1 Automated tests (Vitest + jsdom)
+
 Maintain and update the existing test suite to assert behaviors rather than exact DOM structure. (12)
+
 - Popup navigation: switching panes updates active state and hash. (3, 12)
 - Token guard: missing token triggers navigation + focus and blocks action execution. (7, 12)
 - Copy failure paths: clipboard errors produce an error notification and do not corrupt state. (4, 12)
 - Overlay idempotency: repeated initialization/mount attempts yield a single overlay instance. (9, 12)
 
 ### 11.2 Manual verification (Chrome + DevTools)
+
 Use Chrome DevTools (via MCP) to validate:
+
 - Focus order, keyboard operability, accessibility tree for popup and overlay. (13)
 - Portal placement and CSS isolation in Shadow DOM for overlay. (2, 9)
 - Layout invariants (pane structure/sizing/scroll regions). (1)
 
 ## 12. Migration and Rollout Plan
+
 To minimize regression risk:
-1) Introduce React root mounting while keeping existing storage/message services intact.
-2) Replace popup DOM UI with React panes one-by-one while preserving storage keys and message actions.
-3) Replace overlay DOM renderer with a ShadowRoot-mounted React overlay driven by the existing message actions.
-4) Update tests to the new UI layer and ensure `pnpm run build`, `pnpm run lint`, and `pnpm test` remain green. (12)
+
+1. Introduce React root mounting while keeping existing storage/message services intact.
+2. Replace popup DOM UI with React panes one-by-one while preserving storage keys and message actions.
+3. Replace overlay DOM renderer with a ShadowRoot-mounted React overlay driven by the existing message actions.
+4. Update tests to the new UI layer and ensure `pnpm run build`, `pnpm run lint`, and `pnpm test` remain green. (12)
 
 ## 13. Requirements Traceability
+
 Mapping from requirements (by numeric heading) to design sections:
 
-| Requirement | Design coverage |
-|---:|---|
-| 1 | Sections 1, 6.1, 7.1, 12 |
-| 2 | Sections 4, 6, 7.5 |
-| 3 | Sections 6.2, 8.1, 11.1 |
-| 4 | Sections 6.3, 8.1, 9 |
-| 5 | Section 6.3 |
-| 6 | Sections 6.4, 8.1 |
-| 7 | Section 6.5, 9 |
-| 8 | Sections 7.2–7.4, 8.2 |
-| 9 | Sections 7.1, 7.5, 11.1 |
-| 10 | Sections 6.4, 7.1, 12 |
-| 11 | Sections 5.3, 8, 9 |
-| 12 | Sections 4.2, 11, 12 |
-| 13 | Sections 6.2, 10 |
-
+| Requirement | Design coverage          |
+| ----------: | ------------------------ |
+|           1 | Sections 1, 6.1, 7.1, 12 |
+|           2 | Sections 4, 6, 7.5       |
+|           3 | Sections 6.2, 8.1, 11.1  |
+|           4 | Sections 6.3, 8.1, 9     |
+|           5 | Section 6.3              |
+|           6 | Sections 6.4, 8.1        |
+|           7 | Section 6.5, 9           |
+|           8 | Sections 7.2–7.4, 8.2    |
+|           9 | Sections 7.1, 7.5, 11.1  |
+|          10 | Sections 6.4, 7.1, 12    |
+|          11 | Sections 5.3, 8, 9       |
+|          12 | Sections 4.2, 11, 12     |
+|          13 | Sections 6.2, 10         |
