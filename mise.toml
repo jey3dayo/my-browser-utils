@@ -12,31 +12,27 @@ _.path = ["./node_modules/.bin"]
 
 [tools]
 node = "24"
-"npm:pnpm" = "10.25.0"
+"npm:pnpm" = "10.26.0"
 
 # ========================================
-# コマンド（ショートカット）
+# コマンド（実処理タスク）
 # ========================================
 
 [tasks.format]
-description = "Ultracite(Biome)でソース全体を整形"
+description = "Biomeでソース全体を整形（自動修正あり）"
 run = "pnpm run format"
 
 [tasks."lint:types"]
 description = "TypeScriptの型チェックのみ"
 run = "pnpm exec tsc --noEmit"
 
-[tasks."lint:ultracite"]
-description = "Ultracite(Biome)のチェックのみ"
+[tasks."lint:biome"]
+description = "Biomeのチェックのみ（自動修正なし）"
 run = "pnpm run lint"
 
 [tasks.test]
 description = "Vitestでユニットテストを実行"
 run = "pnpm run test"
-
-[tasks.lint]
-description = "型チェックとフォーマット検証を実行"
-depends = ["lint:types", "lint:ultracite"]
 
 [tasks.build]
 description = "TypeScriptをビルド"
@@ -49,6 +45,14 @@ run = "pnpm run clean"
 # ========================================
 # エイリアス（まとめ実行）
 # ========================================
+
+[tasks.lint]
+description = "型チェック + Biomeチェックを実行"
+depends = ["lint:types", "lint:biome"]
+
+[tasks.check]
+description = "ローカル確認（lint + test）"
+depends = ["lint", "test"]
 
 [tasks.ci]
 description = "CI 相当のチェック (lint + build)"
