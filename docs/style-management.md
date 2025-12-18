@@ -22,15 +22,17 @@ The token system is structured in 3 layers:
 
 Theme switching is done via `data-theme="dark" | "light"`.
 
+Additionally, when `data-theme` is **absent**, the UI follows the system theme via `prefers-color-scheme` (Auto).
+
 - Popup: applied to `document.documentElement`
 - ShadowRoot: applied to `shadowRoot.host`
 
 Implementation:
 
 - `src/ui/theme.ts` exports `applyTheme()` and `Theme`
-- `src/popup.ts` loads the stored theme (defaults to `dark`) and applies it at startup
-- `src/popup/panes/SettingsPane.tsx` provides a Theme selector and persists it to `chrome.storage.local`
-- `src/content.ts` applies `light` to injected ShadowRoot surfaces by default
+- `src/popup.ts` loads the stored theme (defaults to `auto`) and applies it at startup
+- `src/popup/panes/SettingsPane.tsx` provides an Auto/Dark/Light selector and persists it to `chrome.storage.local`
+- `src/content.ts` loads the stored theme (defaults to `auto`) and applies it to injected ShadowRoot surfaces
 
 ## Stylesheet Layout
 
@@ -55,4 +57,3 @@ This attaches `<link rel="stylesheet">` tags to the ShadowRoot so the overlay/to
 ## Legacy Alias Variables
 
 `src/styles/tokens/semantic.css` still exposes a small set of legacy aliases (e.g. `--bg`, `--panel`, `--text`, and `--mbu-*`) to keep incremental refactors stable while migrating older styles.
-

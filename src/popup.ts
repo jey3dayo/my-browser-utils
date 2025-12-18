@@ -9,16 +9,16 @@ async function initTheme(): Promise<void> {
   const runtime = createPopupRuntime();
   try {
     const { theme } = await runtime.storageLocalGet(['theme']);
-    applyTheme(isTheme(theme) ? theme : 'dark', document);
+    applyTheme(isTheme(theme) ? theme : 'auto', document);
   } catch {
-    applyTheme('dark', document);
+    applyTheme('auto', document);
   }
 }
 
 (() => {
   const start = (): void => {
     ensurePopupUiBaseStyles(document);
-    applyTheme('dark', document);
+    applyTheme('auto', document);
     void initTheme();
 
     const isExtensionPage = window.location.protocol === 'chrome-extension:';

@@ -29,7 +29,7 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
   const [showToken, setShowToken] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
   const [model, setModel] = useState(DEFAULT_OPENAI_MODEL);
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>('auto');
   const tokenInputId = useId();
   const modelLabelId = useId();
   const themeLabelId = useId();
@@ -49,8 +49,8 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
         setToken(raw.openaiApiToken ?? '');
         setCustomPrompt(raw.openaiCustomPrompt ?? '');
         setModel(normalizeOpenAiModel(raw.openaiModel));
-        setTheme(isTheme(raw.theme) ? raw.theme : 'dark');
-        applyTheme(isTheme(raw.theme) ? raw.theme : 'dark', document);
+        setTheme(isTheme(raw.theme) ? raw.theme : 'auto');
+        applyTheme(isTheme(raw.theme) ? raw.theme : 'auto', document);
       } catch {
         // no-op
       }
@@ -156,8 +156,8 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
   const resetTheme = async (): Promise<void> => {
     try {
       await props.runtime.storageLocalRemove('theme');
-      setTheme('dark');
-      applyTheme('dark', document);
+      setTheme('auto');
+      applyTheme('auto', document);
       props.notify.success('デフォルトに戻しました');
     } catch {
       props.notify.error('変更に失敗しました');
@@ -324,6 +324,10 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
                 <Select.Positioner className="mbu-select-positioner" sideOffset={6}>
                   <Select.Popup className="mbu-select-popup">
                     <Select.List className="mbu-select-list">
+                      <Select.Item className="mbu-select-item" value="auto">
+                        <Select.ItemText>自動</Select.ItemText>
+                        <Select.ItemIndicator className="mbu-select-indicator">✓</Select.ItemIndicator>
+                      </Select.Item>
                       <Select.Item className="mbu-select-item" value="dark">
                         <Select.ItemText>ダーク</Select.ItemText>
                         <Select.ItemIndicator className="mbu-select-indicator">✓</Select.ItemIndicator>
