@@ -260,7 +260,7 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
             ) : null}
             <button
               aria-label="コピー"
-              className="mbu-overlay-action mbu-overlay-primary mbu-overlay-icon-button"
+              className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
               data-testid="overlay-copy"
               disabled={!canCopyPrimary}
               onClick={() => void copyPrimary()}

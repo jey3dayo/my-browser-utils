@@ -426,6 +426,25 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
 	      flex: 0 0 auto;
 	    }
 
+	    .mbu-overlay-copy {
+	      width: 28px;
+	      height: 28px;
+	      border-radius: 9px;
+	      margin-left: auto;
+	      color: var(--mbu-text-muted);
+	      background: color-mix(in oklab, var(--mbu-surface) 96%, transparent);
+	      transition:
+	        background 140ms ease,
+	        border-color 140ms ease,
+	        color 140ms ease;
+	    }
+
+	    .mbu-overlay-copy:hover:not(:disabled) {
+	      border-color: color-mix(in oklab, var(--mbu-accent) 45%, var(--mbu-border));
+	      background: color-mix(in oklab, var(--mbu-accent) 10%, var(--mbu-surface));
+	      color: var(--mbu-text);
+	    }
+
 	    .mbu-overlay-icon-button svg {
 	      width: 16px;
 	      height: 16px;
@@ -434,6 +453,12 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
 	      stroke-width: 2.2;
 	      stroke-linecap: round;
 	      stroke-linejoin: round;
+	    }
+
+	    .mbu-overlay-icon-button.mbu-overlay-copy svg {
+	      width: 14px;
+	      height: 14px;
+	      stroke-width: 2;
 	    }
 
 	    .mbu-overlay-icon-button[data-active='true'] {
