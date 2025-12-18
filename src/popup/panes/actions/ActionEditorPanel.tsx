@@ -3,6 +3,8 @@ import { Fieldset } from '@base-ui/react/fieldset';
 import { Form } from '@base-ui/react/form';
 import { Input } from '@base-ui/react/input';
 import { Select } from '@base-ui/react/select';
+import { Toggle } from '@base-ui/react/toggle';
+import { ToggleGroup } from '@base-ui/react/toggle-group';
 import { useId } from 'react';
 import type { ContextAction, ContextActionKind } from '../../../context_actions';
 
@@ -25,23 +27,16 @@ type Props = {
 export function ActionEditorPanel(props: Props): React.JSX.Element {
   const titleInputId = useId();
   const actionLabelId = useId();
-  const kindLabelId = useId();
 
   const actions = [
     { label: '新規作成', value: null as string | null },
     ...props.actions.map(action => ({ label: action.title, value: action.id })),
   ];
 
-  const kinds = [
-    { label: 'text', value: 'text' as const },
-    { label: 'event', value: 'event' as const },
-  ];
-
   return (
     <section className="editor-panel">
       <Form
-        onSubmit={event => {
-          event.preventDefault();
+        onFormSubmit={() => {
           props.onSave();
         }}
       >
@@ -98,40 +93,23 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
           </label>
 
           <div className="field">
-            <span className="field-name" id={kindLabelId}>
-              種類
-            </span>
-            <Select.Root
-              items={kinds}
-              onValueChange={value => {
-                props.onChangeKind(value === 'event' ? 'event' : 'text');
+            <span className="field-name">種類</span>
+            <ToggleGroup
+              className="mbu-toggle-group"
+              data-testid="action-editor-kind"
+              onValueChange={groupValue => {
+                const next = groupValue[0];
+                props.onChangeKind(next === 'event' ? 'event' : 'text');
               }}
-              value={props.editorKind}
+              value={[props.editorKind]}
             >
-              <Select.Trigger
-                aria-labelledby={kindLabelId}
-                className="token-input mbu-select-trigger"
-                data-testid="action-editor-kind"
-                type="button"
-              >
-                <Select.Value className="mbu-select-value" />
-                <Select.Icon className="mbu-select-icon">▾</Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Positioner className="mbu-select-positioner" sideOffset={6}>
-                  <Select.Popup className="mbu-select-popup">
-                    <Select.List className="mbu-select-list">
-                      {kinds.map(item => (
-                        <Select.Item className="mbu-select-item" key={item.value} value={item.value}>
-                          <Select.ItemText>{item.label}</Select.ItemText>
-                          <Select.ItemIndicator className="mbu-select-indicator">✓</Select.ItemIndicator>
-                        </Select.Item>
-                      ))}
-                    </Select.List>
-                  </Select.Popup>
-                </Select.Positioner>
-              </Select.Portal>
-            </Select.Root>
+              <Toggle className="mbu-toggle-group-item" value="text">
+                text
+              </Toggle>
+              <Toggle className="mbu-toggle-group-item" value="event">
+                event
+              </Toggle>
+            </ToggleGroup>
           </div>
 
           <label className="field">

@@ -67,18 +67,15 @@ describe('popup Actions pane: editor', () => {
 
   it('creates a new action and persists to sync storage', async () => {
     const title = dom.window.document.querySelector<HTMLInputElement>('[data-testid="action-editor-title"]');
-    const kind = dom.window.document.querySelector<HTMLButtonElement>('[data-testid="action-editor-kind"]');
     const prompt = dom.window.document.querySelector<HTMLTextAreaElement>('[data-testid="action-editor-prompt"]');
     const save = dom.window.document.querySelector<HTMLButtonElement>('[data-testid="action-editor-save"]');
 
     expect(title).not.toBeNull();
-    expect(kind).not.toBeNull();
     expect(prompt).not.toBeNull();
     expect(save).not.toBeNull();
 
     await act(async () => {
       inputValue(dom.window, title as HTMLInputElement, 'カスタム');
-      await selectBaseUiOption(dom.window, kind as HTMLButtonElement, 'text');
       inputValue(dom.window, prompt as HTMLTextAreaElement, '{{text}}');
       save?.click();
       await flush(dom.window);

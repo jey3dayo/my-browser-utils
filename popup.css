@@ -1088,6 +1088,36 @@ body.no-js:has(.pane:target) .pane.active:not(:target) {
   border-radius: 10px;
 }
 
+.mbu-toggle-group {
+  display: inline-flex;
+  gap: 1px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 2px;
+}
+
+.mbu-toggle-group-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-sub);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  user-select: none;
+}
+
+.mbu-toggle-group-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mbu-toggle-group-item[data-pressed] {
+  background: rgba(62, 207, 142, 0.14);
+  color: var(--text);
+}
+
 .pattern-list {
   max-height: 240px;
   border: 1px dashed var(--line);

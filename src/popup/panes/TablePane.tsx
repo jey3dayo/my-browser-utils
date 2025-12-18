@@ -1,4 +1,5 @@
 import { Button } from '@base-ui/react/button';
+import { Form } from '@base-ui/react/form';
 import { Input } from '@base-ui/react/input';
 import { ScrollArea } from '@base-ui/react/scroll-area';
 import { Toggle } from '@base-ui/react/toggle';
@@ -129,7 +130,12 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
         <div className="hint">
           URLパターン（<code>*</code>ワイルドカード対応 / protocolは無視）
         </div>
-        <div className="pattern-input-group">
+        <Form
+          className="pattern-input-group"
+          onFormSubmit={() => {
+            void addPattern();
+          }}
+        >
           <Input
             className="pattern-input"
             data-testid="pattern-input"
@@ -146,7 +152,7 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
           >
             追加
           </Button>
-        </div>
+        </Form>
 
         {patterns.length > 0 ? (
           <ScrollArea.Root className="pattern-scrollarea">

@@ -142,8 +142,7 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
 
       <Form
         className="stack"
-        onSubmit={event => {
-          event.preventDefault();
+        onFormSubmit={() => {
           void saveToken();
         }}
       >
@@ -201,8 +200,7 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
 
       <Form
         className="stack"
-        onSubmit={event => {
-          event.preventDefault();
+        onFormSubmit={() => {
           void saveModel();
         }}
       >
@@ -269,8 +267,7 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
 
       <Form
         className="stack"
-        onSubmit={event => {
-          event.preventDefault();
+        onFormSubmit={() => {
           void savePrompt();
         }}
       >
