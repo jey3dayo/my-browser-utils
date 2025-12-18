@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flush } from './helpers/async';
 
 type ChromeStub = {
   runtime: {
@@ -71,12 +72,6 @@ function createChromeStub(listeners: Array<(...args: unknown[]) => unknown>): Ch
   };
 }
 
-async function flush(times = 6): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise<void>(resolve => setTimeout(resolve, 0));
-  }
-}
-
 describe('background: OpenAI model selection', () => {
   let listeners: Array<(...args: unknown[]) => unknown>;
   let chromeStub: ChromeStub;
@@ -133,7 +128,7 @@ describe('background: OpenAI model selection', () => {
       sendResponse,
     );
 
-    await flush();
+    await flush(setTimeout, 6);
     expect(capturedModel).toBe('gpt-4o');
   });
 });

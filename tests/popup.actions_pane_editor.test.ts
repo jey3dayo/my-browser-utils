@@ -1,114 +1,22 @@
-import { JSDOM } from 'jsdom';
+import type { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flush } from './helpers/async';
+import { inputValue, selectValue } from './helpers/forms';
+import { createPopupChromeStub, type PopupChromeStub } from './helpers/popupChromeStub';
+import { createPopupDom } from './helpers/popupDom';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-type ChromeStub = {
-  runtime: {
-    lastError: { message: string } | null;
-    sendMessage: ReturnType<typeof vi.fn>;
-  };
-  storage: {
-    sync: {
-      get: ReturnType<typeof vi.fn>;
-      set: ReturnType<typeof vi.fn>;
-    };
-    local: {
-      get: ReturnType<typeof vi.fn>;
-      set: ReturnType<typeof vi.fn>;
-      remove: ReturnType<typeof vi.fn>;
-    };
-  };
-  tabs: {
-    query: ReturnType<typeof vi.fn>;
-  };
-};
-
-function createPopupDom(url = 'chrome-extension://test/popup.html#pane-actions'): JSDOM {
-  const html = `<!doctype html>
-  <html lang="ja">
-    <head></head>
-    <body>
-      <div id="root"></div>
-    </body>
-  </html>`;
-
-  return new JSDOM(html, { url });
-}
-
-function createChromeStub(): ChromeStub {
-  const runtime = {
-    lastError: null as { message: string } | null,
-    sendMessage: vi.fn(),
-  };
-
-  return {
-    runtime,
-    storage: {
-      sync: {
-        get: vi.fn(),
-        set: vi.fn((_items: unknown, callback: () => void) => {
-          runtime.lastError = null;
-          callback();
-        }),
-      },
-      local: {
-        get: vi.fn(),
-        set: vi.fn((_items: unknown, callback: () => void) => {
-          runtime.lastError = null;
-          callback();
-        }),
-        remove: vi.fn((_keys: unknown, callback: () => void) => {
-          runtime.lastError = null;
-          callback();
-        }),
-      },
-    },
-    tabs: {
-      query: vi.fn(),
-    },
-  };
-}
-
-async function flush(window: Window, times = 5): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-  }
-}
-
-function inputValue(window: Window, el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const proto = Object.getPrototypeOf(el) as object;
-  const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
-  if (descriptor?.set) {
-    descriptor.set.call(el, value);
-  } else {
-    el.value = value;
-  }
-  el.dispatchEvent(new window.Event('input', { bubbles: true }));
-  el.dispatchEvent(new window.Event('change', { bubbles: true }));
-}
-
-function selectValue(window: Window, el: HTMLSelectElement, value: string): void {
-  const proto = Object.getPrototypeOf(el) as object;
-  const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
-  if (descriptor?.set) {
-    descriptor.set.call(el, value);
-  } else {
-    el.value = value;
-  }
-  el.dispatchEvent(new window.Event('change', { bubbles: true }));
-}
-
 describe('popup Actions pane: editor', () => {
   let dom: JSDOM;
-  let chromeStub: ChromeStub;
+  let chromeStub: PopupChromeStub;
 
   beforeEach(async () => {
     vi.resetModules();
 
     dom = createPopupDom();
-    chromeStub = createChromeStub();
+    chromeStub = createPopupChromeStub();
 
     chromeStub.storage.sync.get.mockImplementation((keys: string[], callback: (items: unknown) => void) => {
       chromeStub.runtime.lastError = null;

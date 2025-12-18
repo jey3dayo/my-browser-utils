@@ -1,27 +1,12 @@
-import { JSDOM } from 'jsdom';
+import type { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PopupApp } from '../src/popup/App';
+import { flush } from './helpers/async';
+import { createPopupDom } from './helpers/popupDom';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createPopupDom(url = 'chrome-extension://test/popup.html#pane-actions'): JSDOM {
-  const html = `<!doctype html>
-  <html lang="ja">
-    <body>
-      <div id="root"></div>
-    </body>
-  </html>`;
-
-  return new JSDOM(html, { url });
-}
-
-async function flush(window: Window, times = 5): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-  }
-}
 
 describe('popup navigation (React + Base UI Tabs)', () => {
   let dom: JSDOM;
