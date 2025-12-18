@@ -1,6 +1,9 @@
 import { Button } from '@base-ui/react/button';
+import { Form } from '@base-ui/react/form';
 import { Input } from '@base-ui/react/input';
-import { useEffect, useId, useState } from 'react';
+import { ScrollArea } from '@base-ui/react/scroll-area';
+import { Toggle } from '@base-ui/react/toggle';
+import { useEffect, useState } from 'react';
 import type { EnableTableSortMessage } from '../runtime';
 import type { PopupPaneBaseProps } from './types';
 
@@ -18,7 +21,6 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
   const [autoEnable, setAutoEnable] = useState(false);
   const [patterns, setPatterns] = useState<string[]>([]);
   const [patternInput, setPatternInput] = useState('');
-  const autoEnableId = useId();
 
   useEffect(() => {
     let cancelled = false;
@@ -114,22 +116,26 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
         </Button>
       </div>
 
-      <label className="checkbox-inline" htmlFor={autoEnableId}>
-        <Input
-          checked={autoEnable}
-          data-testid="auto-enable-sort"
-          id={autoEnableId}
-          onChange={event => void toggleAutoEnable(event.currentTarget.checked)}
-          type="checkbox"
-        />
+      <Toggle
+        className="mbu-toggle-inline"
+        data-testid="auto-enable-sort"
+        onPressedChange={pressed => void toggleAutoEnable(pressed)}
+        pressed={autoEnable}
+        type="button"
+      >
         自動で有効化する
-      </label>
+      </Toggle>
 
       <div className="stack">
         <div className="hint">
           URLパターン（<code>*</code>ワイルドカード対応 / protocolは無視）
         </div>
-        <div className="pattern-input-group">
+        <Form
+          className="pattern-input-group"
+          onFormSubmit={() => {
+            void addPattern();
+          }}
+        >
           <Input
             className="pattern-input"
             data-testid="pattern-input"
@@ -146,26 +152,35 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
           >
             追加
           </Button>
-        </div>
+        </Form>
 
         {patterns.length > 0 ? (
-          <ul aria-label="登録済みパターン" className="pattern-list">
-            {patterns.map(pattern => (
-              <li className="pattern-item" key={pattern}>
-                <code className="pattern-text">{pattern}</code>
-                <Button
-                  className="btn-delete"
-                  data-pattern-remove={pattern}
-                  onClick={() => {
-                    void removePattern(pattern);
-                  }}
-                  type="button"
-                >
-                  削除
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <ScrollArea.Root className="pattern-scrollarea">
+            <ScrollArea.Viewport className="pattern-list">
+              <ScrollArea.Content>
+                <ul aria-label="登録済みパターン" className="pattern-list-inner">
+                  {patterns.map(pattern => (
+                    <li className="pattern-item" key={pattern}>
+                      <code className="pattern-text">{pattern}</code>
+                      <Button
+                        className="btn-delete"
+                        data-pattern-remove={pattern}
+                        onClick={() => {
+                          void removePattern(pattern);
+                        }}
+                        type="button"
+                      >
+                        削除
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea.Content>
+            </ScrollArea.Viewport>
+            <ScrollArea.Scrollbar className="pattern-scrollbar">
+              <ScrollArea.Thumb className="pattern-thumb" />
+            </ScrollArea.Scrollbar>
+          </ScrollArea.Root>
         ) : (
           <p className="empty-message">まだパターンが登録されていません</p>
         )}
