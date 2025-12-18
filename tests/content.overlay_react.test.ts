@@ -1,5 +1,6 @@
 import { JSDOM } from 'jsdom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { flush } from './helpers/async';
 
 type ContentRequest =
   | {
@@ -74,12 +75,6 @@ function createChromeStub(listeners: Array<(...args: unknown[]) => unknown>): Ch
   };
 }
 
-async function flush(window: Window, times = 6): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-  }
-}
-
 async function dispatchMessage(
   listener: (...args: unknown[]) => unknown,
   request: ContentRequest,
@@ -87,7 +82,7 @@ async function dispatchMessage(
 ): Promise<void> {
   const sendResponse = vi.fn();
   listener(request, {}, sendResponse);
-  await flush(window);
+  await flush(window, 6);
 }
 
 describe('content overlay (React + Shadow DOM)', () => {
@@ -178,7 +173,7 @@ describe('content overlay (React + Shadow DOM)', () => {
     expect(copyButton).not.toBeNull();
 
     copyButton?.click();
-    await flush(dom.window);
+    await flush(dom.window, 6);
 
     expect(shadow?.textContent).toContain('コピーに失敗しました');
     expect(shadow?.querySelector('[data-testid="overlay-copy"]')).not.toBeNull();

@@ -1,34 +1,19 @@
-import { JSDOM } from 'jsdom';
+import type { JSDOM } from 'jsdom';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PopupApp } from '../src/popup/App';
+import { flush } from './helpers/async';
+import { createPopupDom } from './helpers/popupDom';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-function createPopupDom(url = 'file:///popup.html#pane-actions'): JSDOM {
-  const html = `<!doctype html>
-  <html lang="ja">
-    <body>
-      <div id="root"></div>
-    </body>
-  </html>`;
-
-  return new JSDOM(html, { url });
-}
-
-async function flush(window: Window, times = 5): Promise<void> {
-  for (let i = 0; i < times; i += 1) {
-    await new Promise<void>(resolve => window.setTimeout(resolve, 0));
-  }
-}
 
 describe('popup layout structure', () => {
   let dom: JSDOM;
 
   beforeEach(async () => {
     vi.resetModules();
-    dom = createPopupDom();
+    dom = createPopupDom('file:///popup.html#pane-actions');
     vi.stubGlobal('window', dom.window);
     vi.stubGlobal('document', dom.window.document);
     vi.stubGlobal('navigator', dom.window.navigator);
