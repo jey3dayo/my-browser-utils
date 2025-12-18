@@ -44,7 +44,7 @@ export const Basic: Story = {
     });
     const popup = canvasElement.ownerDocument.querySelector<HTMLElement>('.mbu-select-popup');
     if (!popup) throw new Error('Select popup not found');
-    await userEvent.click(within(popup).getByText('HTML <a>'));
+    await userEvent.click(within(popup).getByRole('option', { name: 'HTML <a>' }));
 
     await waitFor(() => {
       const output = canvas.getByTestId('create-link-output') as HTMLTextAreaElement;
