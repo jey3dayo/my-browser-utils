@@ -3,10 +3,10 @@ name: 'Setup Node Environment'
 description: 'Complete Node.js environment setup with pnpm and caching'
 
 inputs:
-  node-version:
-    description: 'Node.js version to use'
+  node-version-file:
+    description: 'File to read Node.js version from (e.g. package.json engines.node)'
     required: false
-    default: '24.8.0'
+    default: 'package.json'
 
   skip-install:
     description: 'Skip dependency installation'
@@ -34,7 +34,7 @@ runs:
       id: setup-node
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ inputs.node-version }}
+        node-version-file: ${{ inputs.node-version-file }}
 
     - name: Setup pnpm and Cache
       id: setup-cache
@@ -42,4 +42,3 @@ runs:
       uses: ./.github/actions/setup-pnpm-cache
       with:
         pnpm-version: ${{ inputs.pnpm-version }}
-
