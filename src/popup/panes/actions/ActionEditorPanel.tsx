@@ -1,3 +1,4 @@
+import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
 import { useId } from 'react';
 import type { ContextAction, ContextActionKind } from '../../../context_actions';
@@ -51,9 +52,7 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
             className="token-input"
             data-testid="action-editor-title"
             id={titleInputId}
-            onChange={event => {
-              props.onChangeTitle(event.currentTarget.value);
-            }}
+            onValueChange={props.onChangeTitle}
             type="text"
             value={props.editorTitle}
           />
@@ -88,7 +87,7 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
         </label>
 
         <div className="button-row">
-          <button
+          <Button
             className="btn btn-primary btn-small"
             data-testid="action-editor-save"
             onClick={() => {
@@ -97,8 +96,8 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
             type="button"
           >
             保存
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn-delete"
             data-testid="action-editor-delete"
             disabled={!props.editorId}
@@ -108,8 +107,8 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
             type="button"
           >
             削除
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="action-editor-clear"
             onClick={() => {
@@ -118,8 +117,8 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
             type="button"
           >
             クリア
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="action-editor-reset"
             onClick={() => {
@@ -128,7 +127,7 @@ export function ActionEditorPanel(props: Props): React.JSX.Element {
             type="button"
           >
             デフォルトに戻す
-          </button>
+          </Button>
         </div>
       </div>
     </section>

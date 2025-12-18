@@ -1,3 +1,5 @@
+import { Button } from '@base-ui/react/button';
+
 type Props = {
   title: string;
   value: string;
@@ -15,7 +17,7 @@ export function ActionOutputPanel(props: Props): React.JSX.Element {
       <div className="row-between">
         <div className="meta-title">{props.title}</div>
         <div className="button-row">
-          <button
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="copy-output"
             disabled={!props.canCopy}
@@ -25,8 +27,8 @@ export function ActionOutputPanel(props: Props): React.JSX.Element {
             type="button"
           >
             コピー
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="open-calendar"
             disabled={!props.canOpenCalendar}
@@ -36,8 +38,8 @@ export function ActionOutputPanel(props: Props): React.JSX.Element {
             type="button"
           >
             カレンダー
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="download-ics"
             disabled={!props.canDownloadIcs}
@@ -47,7 +49,7 @@ export function ActionOutputPanel(props: Props): React.JSX.Element {
             type="button"
           >
             .ics
-          </button>
+          </Button>
         </div>
       </div>
       <textarea

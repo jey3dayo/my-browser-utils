@@ -1,4 +1,5 @@
 import { Dialog, Tabs } from '@base-ui/react';
+import { Button } from '@base-ui/react/button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createNotifications, ToastHost } from '../ui/toast';
 import { coercePaneId, getPaneIdFromHash, type PaneId } from './panes';
@@ -169,15 +170,15 @@ export function PopupApp(): React.JSX.Element {
               <Dialog.Popup aria-label="メニュー" className="menu-drawer">
                 <div className="menu-drawer-header">
                   <h2 className="menu-drawer-title">メニュー</h2>
-                  <button aria-label="閉じる" className="menu-close" onClick={() => setMenuOpen(false)} type="button">
+                  <Button aria-label="閉じる" className="menu-close" onClick={() => setMenuOpen(false)} type="button">
                     <svg aria-hidden="true" viewBox="0 0 24 24">
                       <line x1="18" x2="6" y1="6" y2="18" />
                       <line x1="6" x2="18" y1="6" y2="18" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 <nav className="menu-drawer-nav">
-                  <button
+                  <Button
                     aria-current={tabValue === 'pane-actions' ? 'page' : undefined}
                     className={tabValue === 'pane-actions' ? 'menu-item active' : 'menu-item'}
                     onClick={() => navigateToPane('pane-actions')}
@@ -189,8 +190,8 @@ export function PopupApp(): React.JSX.Element {
                       </svg>
                     </span>
                     アクション
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     aria-current={tabValue === 'pane-table' ? 'page' : undefined}
                     className={tabValue === 'pane-table' ? 'menu-item active' : 'menu-item'}
                     onClick={() => navigateToPane('pane-table')}
@@ -205,8 +206,8 @@ export function PopupApp(): React.JSX.Element {
                       </svg>
                     </span>
                     テーブルソート
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     aria-current={tabValue === 'pane-settings' ? 'page' : undefined}
                     className={tabValue === 'pane-settings' ? 'menu-item active' : 'menu-item'}
                     onClick={() => navigateToPane('pane-settings')}
@@ -219,7 +220,7 @@ export function PopupApp(): React.JSX.Element {
                       </svg>
                     </span>
                     設定
-                  </button>
+                  </Button>
                 </nav>
               </Dialog.Popup>
             </Dialog.Portal>

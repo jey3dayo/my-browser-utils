@@ -1,3 +1,4 @@
+import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
 import { useEffect, useId, useState } from 'react';
 import type { EnableTableSortMessage } from '../runtime';
@@ -103,14 +104,14 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
     <div className="card card-stack">
       <div className="row-between">
         <h2 className="pane-title">テーブルソート</h2>
-        <button
+        <Button
           className="btn btn-primary"
           data-testid="enable-table-sort"
           onClick={() => void enableNow()}
           type="button"
         >
           このタブで有効化
-        </button>
+        </Button>
       </div>
 
       <label className="checkbox-inline" htmlFor={autoEnableId}>
@@ -132,19 +133,19 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
           <Input
             className="pattern-input"
             data-testid="pattern-input"
-            onChange={event => setPatternInput(event.currentTarget.value)}
+            onValueChange={setPatternInput}
             placeholder="example.com/path*"
             type="text"
             value={patternInput}
           />
-          <button
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="pattern-add"
             onClick={() => void addPattern()}
             type="button"
           >
             追加
-          </button>
+          </Button>
         </div>
 
         {patterns.length > 0 ? (
@@ -152,7 +153,7 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
             {patterns.map(pattern => (
               <li className="pattern-item" key={pattern}>
                 <code className="pattern-text">{pattern}</code>
-                <button
+                <Button
                   className="btn-delete"
                   data-pattern-remove={pattern}
                   onClick={() => {
@@ -161,7 +162,7 @@ export function TablePane(props: TablePaneProps): React.JSX.Element {
                   type="button"
                 >
                   削除
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

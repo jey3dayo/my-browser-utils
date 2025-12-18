@@ -1,3 +1,4 @@
+import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
 import { useEffect, useId, useState } from 'react';
 import { DEFAULT_OPENAI_MODEL, normalizeOpenAiModel, OPENAI_MODEL_OPTIONS } from '../../openai/settings';
@@ -141,7 +142,7 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
             className="token-input"
             data-testid="openai-token"
             id={tokenInputId}
-            onChange={event => setToken(event.currentTarget.value)}
+            onValueChange={setToken}
             ref={props.tokenInputRef}
             type={showToken ? 'text' : 'password'}
             value={token}
@@ -160,25 +161,25 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
         </label>
 
         <div className="button-row">
-          <button
+          <Button
             className="btn btn-primary btn-small"
             data-testid="token-save"
             onClick={() => void saveToken()}
             type="button"
           >
             保存
-          </button>
-          <button className="btn-delete" data-testid="token-clear" onClick={() => void clearToken()} type="button">
+          </Button>
+          <Button className="btn-delete" data-testid="token-clear" onClick={() => void clearToken()} type="button">
             削除
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="token-test"
             onClick={() => void testToken()}
             type="button"
           >
             トークン確認
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -200,22 +201,22 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
         </label>
 
         <div className="button-row">
-          <button
+          <Button
             className="btn btn-primary btn-small"
             data-testid="model-save"
             onClick={() => void saveModel()}
             type="button"
           >
             保存
-          </button>
-          <button
+          </Button>
+          <Button
             className="btn btn-ghost btn-small"
             data-testid="model-reset"
             onClick={() => void resetModel()}
             type="button"
           >
             デフォルトに戻す
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -232,17 +233,17 @@ export function SettingsPane(props: SettingsPaneProps): React.JSX.Element {
         </label>
 
         <div className="button-row">
-          <button
+          <Button
             className="btn btn-primary btn-small"
             data-testid="prompt-save"
             onClick={() => void savePrompt()}
             type="button"
           >
             保存
-          </button>
-          <button className="btn-delete" data-testid="prompt-clear" onClick={() => void clearPrompt()} type="button">
+          </Button>
+          <Button className="btn-delete" data-testid="prompt-clear" onClick={() => void clearPrompt()} type="button">
             削除
-          </button>
+          </Button>
         </div>
       </section>
     </div>

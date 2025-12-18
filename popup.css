@@ -891,6 +891,14 @@ body.no-js:has(.pane:target) .pane.active:not(:target) {
     background 0.2s ease;
 }
 
+.btn:disabled,
+.btn[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: var(--bg);
@@ -903,11 +911,11 @@ body.no-js:has(.pane:target) .pane.active:not(:target) {
   border: 1px solid var(--line);
 }
 
-.btn:hover {
+.btn:hover:not(:disabled):not([data-disabled]) {
   transform: translateY(-1px);
 }
 
-.btn:active {
+.btn:active:not(:disabled):not([data-disabled]) {
   transform: translateY(0);
 }
 
@@ -981,7 +989,13 @@ body.no-js:has(.pane:target) .pane.active:not(:target) {
   cursor: pointer;
 }
 
-.btn-delete:hover {
+.btn-delete:disabled,
+.btn-delete[data-disabled] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-delete:hover:not(:disabled):not([data-disabled]) {
   background: rgba(229, 115, 115, 0.25);
 }
 
