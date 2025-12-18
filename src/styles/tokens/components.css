@@ -1,4 +1,4 @@
-:where(:root, :host) {
+:root {
   /* ========================================
    * Component Tokens (component-specific)
    * ====================================== */
@@ -47,6 +47,46 @@
 }
 
 :host {
+  --button-radius: var(--radius-md);
+  --button-padding: 10px 14px;
+  --button-padding-sm: 6px 10px;
+  --button-radius-sm: var(--radius-sm);
+  --button-font-weight: 700;
+
+  --button-bg-primary: linear-gradient(
+    135deg,
+    var(--color-primary),
+    var(--color-primary-2)
+  );
+  --button-text-primary: var(--color-bg);
+  --button-shadow-primary: 0 10px 30px
+    color-mix(in oklab, var(--color-primary) 25%, transparent);
+
+  --button-bg-ghost: color-mix(in oklab, var(--color-text) 4%, transparent);
+  --button-text-ghost: var(--color-text);
+  --button-border-ghost: 1px solid var(--color-border);
+
+  --input-padding: 10px 12px;
+  --input-radius: var(--radius-md);
+  --input-border: 1px solid var(--color-border);
+  --input-bg: var(--color-surface-2);
+  --input-text: var(--color-text);
+  --input-placeholder: color-mix(
+    in oklab,
+    var(--color-text-muted) 70%,
+    transparent
+  );
+
+  --card-bg: var(--color-surface);
+  --card-border: 1px solid var(--color-border);
+  --card-radius: var(--radius-lg);
+  --card-shadow: var(--shadow-elevation);
+  --card-padding: 16px;
+
+  --overlay-shadow: var(--shadow-elevation);
+}
+
+:host {
   all: initial;
   position: fixed;
   z-index: 2147483647;
@@ -55,11 +95,11 @@
 }
 
 :host:not([data-theme]),
-:host[data-theme="dark"] {
+:host([data-theme="dark"]) {
   color-scheme: dark;
 }
 
-:host[data-theme="light"] {
+:host([data-theme="light"]) {
   color-scheme: light;
 }
 

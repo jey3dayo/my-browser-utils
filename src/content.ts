@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { OverlayApp, type OverlayViewModel } from './content/overlay/OverlayApp';
 import type { ExtractedEvent, SummarySource } from './shared_types';
 import { ensureShadowUiBaseStyles } from './ui/styles';
-import { applyTheme } from './ui/theme';
+import { applyTheme, isTheme, type Theme } from './ui/theme';
 import { createNotifications, type Notifier, ToastHost, type ToastManager } from './ui/toast';
 
 (() => {
@@ -81,6 +81,31 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
   }
   const globalState = globalContainer.__MBU_CONTENT_STATE__;
 
+  let currentTheme: Theme = 'dark';
+
+  function normalizeTheme(value: unknown): Theme {
+    return isTheme(value) ? value : 'dark';
+  }
+
+  function applyThemeToMounts(theme: Theme): void {
+    if (globalState.toastMount?.host.isConnected) {
+      applyTheme(theme, globalState.toastMount.shadow);
+    }
+    if (globalState.overlayMount?.host.isConnected) {
+      applyTheme(theme, globalState.overlayMount.shadow);
+    }
+  }
+
+  async function refreshThemeFromStorage(): Promise<void> {
+    try {
+      const data = (await storageLocalGet(['theme'])) as { theme?: unknown };
+      currentTheme = normalizeTheme(data.theme);
+    } catch {
+      currentTheme = 'dark';
+    }
+    applyThemeToMounts(currentTheme);
+  }
+
   // ========================================
   // 1. ユーティリティ関数（URLパターン）
   // ========================================
@@ -123,6 +148,7 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
     return;
   }
   globalState.initialized = true;
+  void refreshThemeFromStorage();
 
   // ========================================
   // 2. テーブルソート機能
@@ -255,7 +281,7 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
 
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
     ensureShadowUiBaseStyles(shadow);
-    applyTheme('light', shadow);
+    applyTheme(currentTheme, shadow);
 
     let rootEl = shadow.getElementById(TOAST_ROOT_ID) as HTMLDivElement | null;
     if (!rootEl) {
@@ -367,7 +393,7 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
 
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' });
     ensureShadowUiBaseStyles(shadow);
-    applyTheme('light', shadow);
+    applyTheme(currentTheme, shadow);
 
     let rootEl = shadow.getElementById(OVERLAY_ROOT_ID) as HTMLDivElement | null;
     if (!rootEl) {
@@ -641,18 +667,25 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
 
   if (chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
-      if (areaName !== 'sync') return;
+      if (areaName === 'sync') {
+        if ('contextActions' in changes) {
+          summarizeOverlayTitleCache = null;
+          summarizeOverlayTitleInFlight = null;
+        }
 
-      if ('contextActions' in changes) {
-        summarizeOverlayTitleCache = null;
-        summarizeOverlayTitleInFlight = null;
+        if (!('domainPatterns' in changes || 'autoEnableSort' in changes)) return;
+        void (async () => {
+          await refreshTableConfig();
+          maybeEnableTableSortFromConfig();
+        })();
+        return;
       }
 
-      if (!('domainPatterns' in changes || 'autoEnableSort' in changes)) return;
-      void (async () => {
-        await refreshTableConfig();
-        maybeEnableTableSortFromConfig();
-      })();
+      if (areaName !== 'local') return;
+      if (!('theme' in changes)) return;
+      const change = changes.theme as chrome.storage.StorageChange | undefined;
+      currentTheme = normalizeTheme(change?.newValue);
+      applyThemeToMounts(currentTheme);
     });
   }
 
