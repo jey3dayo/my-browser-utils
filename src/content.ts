@@ -81,10 +81,10 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
   }
   const globalState = globalContainer.__MBU_CONTENT_STATE__;
 
-  let currentTheme: Theme = 'dark';
+  let currentTheme: Theme = 'auto';
 
   function normalizeTheme(value: unknown): Theme {
-    return isTheme(value) ? value : 'dark';
+    return isTheme(value) ? value : 'auto';
   }
 
   function applyThemeToMounts(theme: Theme): void {
@@ -101,7 +101,7 @@ import { createNotifications, type Notifier, ToastHost, type ToastManager } from
       const data = (await storageLocalGet(['theme'])) as { theme?: unknown };
       currentTheme = normalizeTheme(data.theme);
     } catch {
-      currentTheme = 'dark';
+      currentTheme = 'auto';
     }
     applyThemeToMounts(currentTheme);
   }

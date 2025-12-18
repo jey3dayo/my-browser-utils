@@ -103,6 +103,12 @@
   color-scheme: light;
 }
 
+@media (prefers-color-scheme: light) {
+  :host:not([data-theme]) {
+    color-scheme: light;
+  }
+}
+
 :host(#my-browser-utils-toast-host) {
   top: 0;
   left: 0;
