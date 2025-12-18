@@ -626,6 +626,43 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
     return title.replace(/（(?:選択範囲|ページ本文)）\s*$/, '').trim();
   }
 
+  let summarizeOverlayTitleCache: string | null = null;
+  let summarizeOverlayTitleInFlight: Promise<string> | null = null;
+
+  function findContextActionTitle(actions: unknown, id: string): string | null {
+    if (!Array.isArray(actions)) return null;
+    for (const item of actions) {
+      if (typeof item !== 'object' || item === null) continue;
+      const record = item as Record<string, unknown>;
+      if (typeof record.id !== 'string') continue;
+      if (record.id.trim() !== id) continue;
+      const title = typeof record.title === 'string' ? record.title.trim() : '';
+      if (!title) continue;
+      return title;
+    }
+    return null;
+  }
+
+  async function getSummarizeOverlayTitle(): Promise<string> {
+    if (summarizeOverlayTitleCache) return summarizeOverlayTitleCache;
+    if (summarizeOverlayTitleInFlight) return summarizeOverlayTitleInFlight;
+
+    summarizeOverlayTitleInFlight = (async () => {
+      try {
+        const stored = (await storageSyncGet(['contextActions'])) as { contextActions?: unknown };
+        const title = findContextActionTitle(stored.contextActions, 'builtin:summarize');
+        summarizeOverlayTitleCache = stripSourceSuffix(title ?? '') || '要約';
+      } catch {
+        summarizeOverlayTitleCache = '要約';
+      } finally {
+        summarizeOverlayTitleInFlight = null;
+      }
+      return summarizeOverlayTitleCache;
+    })();
+
+    return summarizeOverlayTitleInFlight;
+  }
+
   function showActionOverlay(request: Extract<ContentRequest, { action: 'showActionOverlay' }>): void {
     const primary = request.primary?.trim() ?? '';
     const secondary = request.secondary?.trim() ?? '';
@@ -656,7 +693,7 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
   }
 
   function showSummaryOverlay(request: Extract<ContentRequest, { action: 'showSummaryOverlay' }>): void {
-    const title = '要約';
+    const fallbackTitle = summarizeOverlayTitleCache ?? '要約';
     const summary = request.summary?.trim() ?? '';
     const error = request.error?.trim() ?? '';
 
@@ -667,7 +704,7 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
       status: request.status,
       mode: 'text',
       source: request.source,
-      title,
+      title: fallbackTitle,
       primary:
         request.status === 'ready'
           ? summary || '要約結果が空でした'
@@ -682,6 +719,31 @@ import { ensureShadowUiBaseStyles } from './ui/styles';
             : '',
       anchorRect,
     });
+
+    void (async () => {
+      const title = await getSummarizeOverlayTitle();
+      if (title === fallbackTitle) return;
+      renderOverlay({
+        open: true,
+        status: request.status,
+        mode: 'text',
+        source: request.source,
+        title,
+        primary:
+          request.status === 'ready'
+            ? summary || '要約結果が空でした'
+            : request.status === 'error'
+              ? error || '要約に失敗しました'
+              : '',
+        secondary:
+          request.status === 'loading'
+            ? '処理に数秒かかることがあります。'
+            : request.status === 'error'
+              ? 'OpenAI API Token未設定の場合は、拡張機能のポップアップ「設定」タブで設定してください。'
+              : '',
+        anchorRect,
+      });
+    })();
   }
 
   // ========================================
