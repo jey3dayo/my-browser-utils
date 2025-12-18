@@ -4,6 +4,7 @@ import { Result } from '@praha/byethrow';
 import { type ContextAction, DEFAULT_CONTEXT_ACTIONS, normalizeContextActions } from './context_actions';
 import { parseDateOnlyToYyyyMmDd, parseDateTimeLoose } from './date_utils';
 import { computeEventDateRange } from './event_date_range';
+import { buildIcs } from './ics';
 import type { ExtractedEvent, SummarySource } from './shared_types';
 import type { LocalStorageData } from './storage/types';
 import { toErrorMessage } from './utils/errors';
@@ -174,6 +175,7 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
           return;
         }
 
+        const ics = buildIcs(result.event) ?? undefined;
         await sendMessageToTab(tabId, {
           action: 'showActionOverlay',
           status: 'ready',
@@ -183,6 +185,8 @@ chrome.contextMenus.onClicked.addListener((info: chrome.contextMenus.OnClickData
           primary: formatEventText(result.event),
           secondary: selectionSecondary,
           calendarUrl,
+          ics,
+          event: result.event,
         });
         return;
       }
