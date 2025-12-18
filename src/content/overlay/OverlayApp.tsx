@@ -1,3 +1,4 @@
+import { Button } from '@base-ui/react/button';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AuxTextDisclosure } from '../../components/AuxTextDisclosure';
 import type { ExtractedEvent, SummarySource } from '../../shared_types';
@@ -204,7 +205,7 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
       <div className="mbu-overlay-panel" ref={panelRef}>
         <div className="mbu-overlay-header">
           <div className="mbu-overlay-header-left">
-            <button
+            <Button
               aria-label="ドラッグして固定"
               className="mbu-overlay-drag"
               onPointerCancel={endDrag}
@@ -214,13 +215,13 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
               type="button"
             >
               ⋮⋮
-            </button>
+            </Button>
             <div className="mbu-overlay-title">
               {props.viewModel.title} <span className="mbu-overlay-chip">{sourceLabel}</span>
             </div>
           </div>
           <div className="mbu-overlay-actions">
-            <button
+            <Button
               aria-label={pinned ? '固定解除' : '固定'}
               className="mbu-overlay-action mbu-overlay-icon-button"
               data-active={pinned ? 'true' : undefined}
@@ -230,8 +231,8 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
               type="button"
             >
               <PinIcon />
-            </button>
-            <button
+            </Button>
+            <Button
               aria-label="閉じる"
               className="mbu-overlay-action mbu-overlay-icon-button"
               data-testid="overlay-close"
@@ -240,20 +241,20 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
               type="button"
             >
               ×
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="mbu-overlay-body">
           {props.viewModel.mode === 'event' ? (
             <div className="mbu-overlay-body-actions">
-              <button className="mbu-overlay-action" disabled={!canOpenCalendar} onClick={openCalendar} type="button">
+              <Button className="mbu-overlay-action" disabled={!canOpenCalendar} onClick={openCalendar} type="button">
                 Googleカレンダーに登録
-              </button>
-              <button className="mbu-overlay-action" disabled={!canDownloadIcs} onClick={downloadIcs} type="button">
+              </Button>
+              <Button className="mbu-overlay-action" disabled={!canDownloadIcs} onClick={downloadIcs} type="button">
                 .ics
-              </button>
-              <button
+              </Button>
+              <Button
                 aria-label="コピー"
                 className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
                 data-testid="overlay-copy"
@@ -263,7 +264,7 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
                 type="button"
               >
                 <CopyIcon />
-              </button>
+              </Button>
             </div>
           ) : null}
           {isReadyEvent ? (
@@ -302,17 +303,19 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
             <>
               {statusLabel ? <div className="mbu-overlay-status">{statusLabel}</div> : null}
               <div className="mbu-overlay-primary-block">
-                <button
-                  aria-label="コピー"
-                  className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
-                  data-testid="overlay-copy"
-                  disabled={!canCopyPrimary}
-                  onClick={() => void copyPrimary()}
-                  title="コピー"
-                  type="button"
-                >
-                  <CopyIcon />
-                </button>
+                {props.viewModel.mode === 'event' ? null : (
+                  <Button
+                    aria-label="コピー"
+                    className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
+                    data-testid="overlay-copy"
+                    disabled={!canCopyPrimary}
+                    onClick={() => void copyPrimary()}
+                    title="コピー"
+                    type="button"
+                  >
+                    <CopyIcon />
+                  </Button>
+                )}
                 <pre className="mbu-overlay-primary-text">{props.viewModel.primary}</pre>
               </div>
               {secondaryText ? <pre className="mbu-overlay-secondary-text">{secondaryText}</pre> : null}
