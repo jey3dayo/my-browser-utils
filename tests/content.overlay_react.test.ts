@@ -261,6 +261,14 @@ describe('content overlay (React + Shadow DOM)', () => {
 
     const actions = shadow?.querySelector<HTMLElement>('.mbu-overlay-actions');
     expect(actions).not.toBeNull();
+
+    expect(actions?.querySelector('[data-testid="overlay-copy"]')).toBeNull();
+
+    const bodyActions = shadow?.querySelector<HTMLElement>('.mbu-overlay-body-actions');
+    expect(bodyActions).not.toBeNull();
+    expect(bodyActions?.querySelector('[data-testid="overlay-copy"]')).not.toBeNull();
+    expect(bodyActions?.textContent).toContain('.ics');
+
     const pin = shadow?.querySelector<HTMLElement>('[data-testid="overlay-pin"]');
     const close = shadow?.querySelector<HTMLElement>('[data-testid="overlay-close"]');
     expect(pin).not.toBeNull();

@@ -1,15 +1,11 @@
 {
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": [
-    "ultracite/core"
-  ],
+  "extends": ["ultracite/core"],
   "formatter": {
     "lineWidth": 120
   },
   "javascript": {
-    "globals": [
-      "chrome"
-    ],
+    "globals": ["chrome"],
     "formatter": {
       "arrowParentheses": "asNeeded",
       "quoteStyle": "single",

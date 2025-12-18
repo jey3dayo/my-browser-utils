@@ -189,6 +189,13 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   const selectionSplit = splitSelectionSecondary(props.viewModel.secondary);
   const selectionText = selectionSplit.selectionText;
   const secondaryText = selectionText ? selectionSplit.remainder : props.viewModel.secondary.trim();
+  const canCopyPrimary = props.viewModel.status === 'ready' && Boolean(props.viewModel.primary.trim());
+  const canOpenCalendar =
+    props.viewModel.mode === 'event' &&
+    props.viewModel.status === 'ready' &&
+    Boolean(props.viewModel.calendarUrl?.trim());
+  const canDownloadIcs =
+    props.viewModel.mode === 'event' && props.viewModel.status === 'ready' && Boolean(props.viewModel.ics?.trim());
 
   return (
     <div className="mbu-overlay-surface">
@@ -213,34 +220,6 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
           </div>
           <div className="mbu-overlay-actions">
             <button
-              aria-label="コピー"
-              className="mbu-overlay-action mbu-overlay-primary mbu-overlay-icon-button"
-              data-testid="overlay-copy"
-              onClick={() => void copyPrimary()}
-              title="コピー"
-              type="button"
-            >
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <rect height="13" rx="2" width="13" x="9" y="9" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-            </button>
-            {props.viewModel.mode === 'event' ? (
-              <>
-                <button className="mbu-overlay-action" onClick={openCalendar} type="button">
-                  カレンダー
-                </button>
-                <button
-                  className="mbu-overlay-action"
-                  disabled={!props.viewModel.ics?.trim()}
-                  onClick={downloadIcs}
-                  type="button"
-                >
-                  .ics
-                </button>
-              </>
-            ) : null}
-            <button
               aria-label={pinned ? '固定解除' : '固定'}
               className="mbu-overlay-action mbu-overlay-icon-button"
               data-active={pinned ? 'true' : undefined}
@@ -256,9 +235,10 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
             </button>
             <button
               aria-label="閉じる"
-              className="mbu-overlay-action"
+              className="mbu-overlay-action mbu-overlay-icon-button"
               data-testid="overlay-close"
               onClick={props.onDismiss}
+              title="閉じる"
               type="button"
             >
               ×
@@ -267,6 +247,32 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
         </div>
 
         <div className="mbu-overlay-body">
+          <div className="mbu-overlay-body-actions">
+            {props.viewModel.mode === 'event' ? (
+              <>
+                <button className="mbu-overlay-action" disabled={!canOpenCalendar} onClick={openCalendar} type="button">
+                  Googleカレンダーに登録
+                </button>
+                <button className="mbu-overlay-action" disabled={!canDownloadIcs} onClick={downloadIcs} type="button">
+                  .ics
+                </button>
+              </>
+            ) : null}
+            <button
+              aria-label="コピー"
+              className="mbu-overlay-action mbu-overlay-primary mbu-overlay-icon-button"
+              data-testid="overlay-copy"
+              disabled={!canCopyPrimary}
+              onClick={() => void copyPrimary()}
+              title="コピー"
+              type="button"
+            >
+              <svg aria-hidden="true" viewBox="0 0 24 24">
+                <rect height="13" rx="2" width="13" x="9" y="9" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+            </button>
+          </div>
           {isReadyEvent ? (
             <>
               <table className="mbu-overlay-event-table">

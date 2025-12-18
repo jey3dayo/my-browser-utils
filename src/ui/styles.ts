@@ -124,9 +124,9 @@ export function ensurePopupUiBaseStyles(doc: Document): void {
   popupOverrides.textContent = `
   body { position: relative; }
   .mbu-toast-viewport {
-    position: absolute;
+    position: fixed;
     top: 12px;
-    right: calc(12px + var(--rail, 0px));
+    right: 12px;
   }
   `;
   (doc.head ?? doc.documentElement).appendChild(popupOverrides);
