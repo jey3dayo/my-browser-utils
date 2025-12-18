@@ -137,6 +137,31 @@ describe('content overlay (React + Shadow DOM)', () => {
     expect(dom.window.document.querySelector('#my-browser-utils-overlay')).not.toBeNull();
   });
 
+  it('hides the copy button while overlay is loading', async () => {
+    await import('../src/content.ts');
+    const [listener] = listeners;
+    if (!listener) throw new Error('missing message listener');
+
+    await dispatchMessage(
+      listener,
+      {
+        action: 'showActionOverlay',
+        status: 'loading',
+        mode: 'text',
+        source: 'page',
+        title: 'Test',
+      },
+      dom.window,
+    );
+
+    const host = dom.window.document.querySelector<HTMLDivElement>('#my-browser-utils-overlay');
+    const shadow = host?.shadowRoot ?? null;
+    expect(shadow).not.toBeNull();
+
+    expect(shadow?.textContent).toContain('処理中...');
+    expect(shadow?.querySelector('[data-testid="overlay-copy"]')).toBeNull();
+  });
+
   it('does not duplicate the source label in summary overlay titles', async () => {
     await import('../src/content.ts');
     const [listener] = listeners;

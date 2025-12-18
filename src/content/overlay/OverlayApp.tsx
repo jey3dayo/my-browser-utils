@@ -254,17 +254,19 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
               <Button className="mbu-overlay-action" disabled={!canDownloadIcs} onClick={downloadIcs} type="button">
                 .ics
               </Button>
-              <Button
-                aria-label="コピー"
-                className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
-                data-testid="overlay-copy"
-                disabled={!canCopyPrimary}
-                onClick={() => void copyPrimary()}
-                title="コピー"
-                type="button"
-              >
-                <CopyIcon />
-              </Button>
+              {canCopyPrimary ? (
+                <Button
+                  aria-label="コピー"
+                  className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"
+                  data-testid="overlay-copy"
+                  disabled={!canCopyPrimary}
+                  onClick={() => void copyPrimary()}
+                  title="コピー"
+                  type="button"
+                >
+                  <CopyIcon />
+                </Button>
+              ) : null}
             </div>
           ) : null}
           {isReadyEvent ? (
@@ -303,7 +305,7 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
             <>
               {statusLabel ? <div className="mbu-overlay-status">{statusLabel}</div> : null}
               <div className="mbu-overlay-primary-block">
-                {props.viewModel.mode === 'event' ? null : (
+                {props.viewModel.mode === 'event' || !canCopyPrimary ? null : (
                   <Button
                     aria-label="コピー"
                     className="mbu-overlay-action mbu-overlay-icon-button mbu-overlay-copy"

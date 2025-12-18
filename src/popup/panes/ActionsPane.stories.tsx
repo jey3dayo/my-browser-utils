@@ -62,7 +62,7 @@ export const Basic: Story = {
     });
     const popup = canvasElement.ownerDocument.querySelector<HTMLElement>('.mbu-select-popup');
     if (!popup) throw new Error('Select popup not found');
-    await userEvent.click(within(popup).getByText('要約'));
+    await userEvent.click(within(popup).getByRole('option', { name: '要約' }));
     await userEvent.clear(canvas.getByTestId('action-editor-title'));
     await userEvent.type(canvas.getByTestId('action-editor-title'), '要約（編集テスト）');
     await userEvent.click(canvas.getByTestId('action-editor-save'));
