@@ -8,6 +8,7 @@ import {
   type OverlayViewModel,
 } from "@/content/overlay/OverlayApp";
 import { ensureShadowUiBaseStyles } from "@/ui/styles";
+import { applyTheme, isTheme, type Theme } from "@/ui/theme";
 
 type Props = {
   viewModel: OverlayViewModel;
@@ -19,6 +20,9 @@ function OverlayAppStory(props: Props): React.JSX.Element {
     shadow: ShadowRoot;
     root: HTMLDivElement;
   } | null>(null);
+
+  const docTheme = document.documentElement.getAttribute("data-theme");
+  const resolvedTheme: Theme = isTheme(docTheme) ? docTheme : "auto";
 
   useLayoutEffect(() => {
     const host = hostRef.current;
@@ -50,6 +54,14 @@ function OverlayAppStory(props: Props): React.JSX.Element {
       setMount(null);
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (!mount) {
+      return;
+    }
+
+    applyTheme(resolvedTheme, mount.shadow);
+  }, [mount, resolvedTheme]);
 
   const host = hostRef.current;
 
