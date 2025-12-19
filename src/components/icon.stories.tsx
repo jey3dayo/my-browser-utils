@@ -56,7 +56,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Gallery: Story = {
-  play: async ({ canvasElement }) => {
+  play: ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     for (const name of iconNames) {

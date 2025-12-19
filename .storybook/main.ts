@@ -20,9 +20,9 @@ const config: StorybookConfig = {
     { from: "../icons", to: "/icons" },
     { from: "../images", to: "/images" },
   ],
-  async viteFinal(config) {
-    config.resolve ??= {};
-    const alias = config.resolve.alias;
+  viteFinal(viteConfig) {
+    viteConfig.resolve ??= {};
+    const alias = viteConfig.resolve.alias;
     if (Array.isArray(alias)) {
       const existing = alias.find((entry) => entry.find === "@");
       if (existing) {

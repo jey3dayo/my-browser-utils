@@ -64,19 +64,28 @@ type SyncStorageData = {
 const CONTEXT_MENU_ROOT_ID = "mbu-root";
 const CONTEXT_MENU_ACTION_PREFIX = "mbu-action:";
 
+// Regex patterns at module level for performance (lint/performance/useTopLevelRegex)
+const WAVE_SEPARATOR_REGEX = /^(.*?)\s*(?:〜|~|–|—)\s*(.*?)$/;
+const DASH_SEPARATOR_REGEX = /^(.*?)\s+-\s+(.*?)$/;
+const TIME_DASH_REGEX =
+  /^(.+\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)$/;
+const DATE_PREFIX_REGEX =
+  /^(\d{4}-\d{1,2}-\d{1,2}|\d{4}\/\d{1,2}\/\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[/-]\d{1,2}|\d{1,2}月\d{1,2}日)\s+/;
+const TIME_ONLY_REGEX = /^(\d{1,2}:\d{2}(?::\d{2})?)$/;
+
 chrome.runtime.onInstalled.addListener(() => {
   console.log("My Browser Utils installed");
-  void scheduleRefreshContextMenus();
+  scheduleRefreshContextMenus();
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  void scheduleRefreshContextMenus();
+  scheduleRefreshContextMenus();
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") return;
   if (!("contextActions" in changes)) return;
-  void scheduleRefreshContextMenus();
+  scheduleRefreshContextMenus();
 });
 
 let contextMenuRefreshQueue: Promise<void> = Promise.resolve();
@@ -92,7 +101,125 @@ function scheduleRefreshContextMenus(): Promise<void> {
   return contextMenuRefreshQueue;
 }
 
-void scheduleRefreshContextMenus();
+scheduleRefreshContextMenus();
+
+// Helper functions to reduce cognitive complexity (extracted from context menu handler)
+type OverlayContext = {
+  tabId: number;
+  action: ContextAction;
+  target: SummaryTarget;
+  resolvedTitle: string;
+  selectionSecondary: string | undefined;
+  tokenHintSecondary: string;
+};
+
+async function handleEventAction(context: OverlayContext): Promise<void> {
+  const {
+    tabId,
+    action,
+    target,
+    resolvedTitle,
+    selectionSecondary,
+    tokenHintSecondary,
+  } = context;
+
+  const extraInstruction = action.prompt?.trim()
+    ? renderInstructionTemplate(action.prompt, target)
+    : undefined;
+  const result = await extractEventWithOpenAI(target, extraInstruction);
+
+  if (!result.ok) {
+    await sendMessageToTab(tabId, {
+      action: "showActionOverlay",
+      status: "error",
+      mode: "event",
+      source: target.source,
+      title: resolvedTitle,
+      primary: result.error,
+      secondary: tokenHintSecondary,
+    });
+    return;
+  }
+
+  const calendarUrl = buildGoogleCalendarUrl(result.event);
+  if (!calendarUrl) {
+    await sendMessageToTab(tabId, {
+      action: "showActionOverlay",
+      status: "error",
+      mode: "event",
+      source: target.source,
+      title: resolvedTitle,
+      primary: `日時の解析に失敗しました（Googleカレンダーリンクを生成できません）\nstart: ${result.event.start}${
+        result.event.end ? `\nend: ${result.event.end}` : ""
+      }`,
+      secondary: selectionSecondary,
+    });
+    return;
+  }
+
+  const ics = buildIcs(result.event) ?? undefined;
+  await sendMessageToTab(tabId, {
+    action: "showActionOverlay",
+    status: "ready",
+    mode: "event",
+    source: target.source,
+    title: resolvedTitle,
+    primary: formatEventText(result.event),
+    secondary: selectionSecondary,
+    calendarUrl,
+    ics,
+    event: result.event,
+  });
+}
+
+async function handlePromptAction(context: OverlayContext): Promise<void> {
+  const {
+    tabId,
+    action,
+    target,
+    resolvedTitle,
+    selectionSecondary,
+    tokenHintSecondary,
+  } = context;
+
+  const prompt = action.prompt.trim();
+  if (!prompt) {
+    await sendMessageToTab(tabId, {
+      action: "showActionOverlay",
+      status: "error",
+      mode: "text",
+      source: target.source,
+      title: resolvedTitle,
+      primary: "プロンプトが空です",
+      secondary: selectionSecondary,
+    });
+    return;
+  }
+
+  const result = await runPromptActionWithOpenAI(target, prompt);
+  if (!result.ok) {
+    await sendMessageToTab(tabId, {
+      action: "showActionOverlay",
+      status: "error",
+      mode: "text",
+      source: target.source,
+      title: resolvedTitle,
+      primary: result.error,
+      secondary: tokenHintSecondary,
+    });
+    return;
+  }
+
+  await sendMessageToTab(tabId, {
+    action: "showActionOverlay",
+    status: "ready",
+    mode: "text",
+    source: target.source,
+    title: resolvedTitle,
+    primary: result.text,
+    secondary: selectionSecondary,
+  });
+}
 
 chrome.contextMenus.onClicked.addListener(
   (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
@@ -160,93 +287,20 @@ chrome.contextMenus.onClicked.addListener(
           target.source === "selection" ? "選択範囲" : "ページ本文";
         const resolvedTitle = `${action.title}（${resolvedSuffix}）`;
 
+        const overlayContext: OverlayContext = {
+          tabId,
+          action,
+          target,
+          resolvedTitle,
+          selectionSecondary,
+          tokenHintSecondary,
+        };
+
         if (action.kind === "event") {
-          const extraInstruction = action.prompt?.trim()
-            ? renderInstructionTemplate(action.prompt, target)
-            : undefined;
-          const result = await extractEventWithOpenAI(target, extraInstruction);
-          if (!result.ok) {
-            await sendMessageToTab(tabId, {
-              action: "showActionOverlay",
-              status: "error",
-              mode: "event",
-              source: target.source,
-              title: resolvedTitle,
-              primary: result.error,
-              secondary: tokenHintSecondary,
-            });
-            return;
-          }
-
-          const calendarUrl = buildGoogleCalendarUrl(result.event);
-          if (!calendarUrl) {
-            await sendMessageToTab(tabId, {
-              action: "showActionOverlay",
-              status: "error",
-              mode: "event",
-              source: target.source,
-              title: resolvedTitle,
-              primary: `日時の解析に失敗しました（Googleカレンダーリンクを生成できません）\nstart: ${result.event.start}${
-                result.event.end ? `\nend: ${result.event.end}` : ""
-              }`,
-              secondary: selectionSecondary,
-            });
-            return;
-          }
-
-          const ics = buildIcs(result.event) ?? undefined;
-          await sendMessageToTab(tabId, {
-            action: "showActionOverlay",
-            status: "ready",
-            mode: "event",
-            source: target.source,
-            title: resolvedTitle,
-            primary: formatEventText(result.event),
-            secondary: selectionSecondary,
-            calendarUrl,
-            ics,
-            event: result.event,
-          });
-          return;
+          await handleEventAction(overlayContext);
+        } else {
+          await handlePromptAction(overlayContext);
         }
-
-        const prompt = action.prompt.trim();
-        if (!prompt) {
-          await sendMessageToTab(tabId, {
-            action: "showActionOverlay",
-            status: "error",
-            mode: "text",
-            source: target.source,
-            title: resolvedTitle,
-            primary: "プロンプトが空です",
-            secondary: selectionSecondary,
-          });
-          return;
-        }
-
-        const result = await runPromptActionWithOpenAI(target, prompt);
-        if (!result.ok) {
-          await sendMessageToTab(tabId, {
-            action: "showActionOverlay",
-            status: "error",
-            mode: "text",
-            source: target.source,
-            title: resolvedTitle,
-            primary: result.error,
-            secondary: tokenHintSecondary,
-          });
-          return;
-        }
-
-        await sendMessageToTab(tabId, {
-          action: "showActionOverlay",
-          status: "ready",
-          mode: "text",
-          source: target.source,
-          title: resolvedTitle,
-          primary: result.text,
-          secondary: selectionSecondary,
-        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "要約に失敗しました";
@@ -321,6 +375,70 @@ async function ensureContextActionsInitialized(): Promise<ContextAction[]> {
   if (existing.length > 0) return existing;
   await storageSyncSet({ contextActions: DEFAULT_CONTEXT_ACTIONS });
   return DEFAULT_CONTEXT_ACTIONS;
+}
+
+// Helper function for handling event actions in message listener
+async function handleEventActionInMessage(
+  tabId: number,
+  target: SummaryTarget,
+  action: ContextAction,
+  sendResponse: (response: RunContextActionResponse) => void
+): Promise<void> {
+  const extraInstruction = action.prompt?.trim()
+    ? renderInstructionTemplate(action.prompt, target)
+    : undefined;
+  const result = await extractEventWithOpenAI(target, extraInstruction);
+
+  if (!result.ok) {
+    sendResponse(result);
+    return;
+  }
+
+  const calendarUrl = buildGoogleCalendarUrl(result.event);
+  if (!calendarUrl) {
+    sendResponse({
+      ok: false,
+      error: `日時の解析に失敗しました（Googleカレンダーリンクを生成できません）\nstart: ${result.event.start}${
+        result.event.end ? `\nend: ${result.event.end}` : ""
+      }`,
+    });
+    return;
+  }
+
+  sendResponse({
+    ok: true,
+    resultType: "event",
+    event: result.event,
+    calendarUrl,
+    eventText: formatEventText(result.event),
+    source: target.source,
+  });
+}
+
+// Helper function for handling prompt actions in message listener
+async function handlePromptActionInMessage(
+  target: SummaryTarget,
+  action: ContextAction,
+  sendResponse: (response: RunContextActionResponse) => void
+): Promise<void> {
+  const prompt = action.prompt.trim();
+  if (!prompt) {
+    sendResponse({ ok: false, error: "プロンプトが空です" });
+    return;
+  }
+
+  const result = await runPromptActionWithOpenAI(target, prompt);
+  if (!result.ok) {
+    sendResponse({ ok: false, error: result.error });
+    return;
+  }
+
+  sendResponse({
+    ok: true,
+    resultType: "text",
+    text: result.text,
+    source: target.source,
+  });
 }
 
 chrome.runtime.onMessage.addListener(
@@ -407,58 +525,15 @@ chrome.runtime.onMessage.addListener(
           }
 
           if (action.kind === "event") {
-            const extraInstruction = action.prompt?.trim()
-              ? renderInstructionTemplate(action.prompt, target)
-              : undefined;
-            const result = await extractEventWithOpenAI(
+            await handleEventActionInMessage(
+              request.tabId,
               target,
-              extraInstruction
+              action,
+              sendResponse
             );
-            if (!result.ok) {
-              sendResponse(result);
-              return;
-            }
-
-            const calendarUrl = buildGoogleCalendarUrl(result.event);
-            if (!calendarUrl) {
-              sendResponse({
-                ok: false,
-                error: `日時の解析に失敗しました（Googleカレンダーリンクを生成できません）\nstart: ${result.event.start}${
-                  result.event.end ? `\nend: ${result.event.end}` : ""
-                }`,
-              });
-              return;
-            }
-
-            sendResponse({
-              ok: true,
-              resultType: "event",
-              event: result.event,
-              calendarUrl,
-              eventText: formatEventText(result.event),
-              source: target.source,
-            });
-            return;
+          } else {
+            await handlePromptActionInMessage(target, action, sendResponse);
           }
-
-          const prompt = action.prompt.trim();
-          if (!prompt) {
-            sendResponse({ ok: false, error: "プロンプトが空です" });
-            return;
-          }
-
-          const result = await runPromptActionWithOpenAI(target, prompt);
-          if (!result.ok) {
-            sendResponse({ ok: false, error: result.error });
-            return;
-          }
-
-          sendResponse({
-            ok: true,
-            resultType: "text",
-            text: result.text,
-            source: target.source,
-          });
         } catch (error) {
           sendResponse({
             ok: false,
@@ -792,16 +867,16 @@ async function extractEventWithOpenAI(
   }
   const settings = settingsResult.value;
 
-  const rawText = target.text.trim();
-  if (!rawText) {
+  const inputText = target.text.trim();
+  if (!inputText) {
     return { ok: false, error: "要約対象のテキストが見つかりませんでした" };
   }
 
   const MAX_INPUT_CHARS = 20_000;
   const clippedText =
-    rawText.length > MAX_INPUT_CHARS
-      ? `${rawText.slice(0, MAX_INPUT_CHARS)}\n\n(以下略)`
-      : rawText;
+    inputText.length > MAX_INPUT_CHARS
+      ? `${inputText.slice(0, MAX_INPUT_CHARS)}\n\n(以下略)`
+      : inputText;
 
   const meta =
     target.title || target.url
@@ -915,13 +990,11 @@ function normalizeOptionalText(value: unknown): string | undefined {
 function splitTextRange(value: string): [string, string] | null {
   const normalized = value.trim();
   if (!normalized) return null;
-  const waveMatch = normalized.match(/^(.*?)\s*(?:〜|~|–|—)\s*(.*?)$/);
+  const waveMatch = normalized.match(WAVE_SEPARATOR_REGEX);
   if (waveMatch) return [waveMatch[1].trim(), waveMatch[2].trim()];
-  const dashMatch = normalized.match(/^(.*?)\s+-\s+(.*?)$/);
+  const dashMatch = normalized.match(DASH_SEPARATOR_REGEX);
   if (dashMatch) return [dashMatch[1].trim(), dashMatch[2].trim()];
-  const timeDashMatch = normalized.match(
-    /^(.+\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*(\d{1,2}:\d{2}(?::\d{2})?)$/
-  );
+  const timeDashMatch = normalized.match(TIME_DASH_REGEX);
   if (timeDashMatch) return [timeDashMatch[1].trim(), timeDashMatch[2].trim()];
   return null;
 }
@@ -951,10 +1024,8 @@ function normalizeEventRange(
   }
 
   // datetime range with time-only end: "2025-12-16 14:00〜15:00"
-  const leftDatePrefix = left.match(
-    /^(\d{4}-\d{1,2}-\d{1,2}|\d{4}\/\d{1,2}\/\d{1,2}|\d{4}年\d{1,2}月\d{1,2}日|\d{1,2}[/-]\d{1,2}|\d{1,2}月\d{1,2}日)\s+/
-  )?.[1];
-  const rightTimeOnly = right.match(/^(\d{1,2}:\d{2}(?::\d{2})?)$/)?.[1];
+  const leftDatePrefix = left.match(DATE_PREFIX_REGEX)?.[1];
+  const rightTimeOnly = right.match(TIME_ONLY_REGEX)?.[1];
 
   if (leftDatePrefix && rightTimeOnly) {
     return { start: left, end: `${leftDatePrefix} ${rightTimeOnly}`, allDay };
