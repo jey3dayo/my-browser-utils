@@ -1,13 +1,16 @@
 import { Dialog, Tabs } from "@base-ui/react";
 import { Button } from "@base-ui/react/button";
+import { Result } from "@praha/byethrow";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { coercePaneId, getPaneIdFromHash, type PaneId } from "@/popup/panes";
 import { ActionsPane } from "@/popup/panes/ActionsPane";
 import { CreateLinkPane } from "@/popup/panes/CreateLinkPane";
+import type { LinkFormat } from "@/popup/panes/create_link/format";
 import { SettingsPane } from "@/popup/panes/SettingsPane";
 import { TablePane } from "@/popup/panes/TablePane";
 import { createPopupRuntime } from "@/popup/runtime";
+import type { CopyTitleLinkFailure } from "@/storage/types";
 import { createNotifications, ToastHost } from "@/ui/toast";
 
 function replaceHash(nextHash: string): void {
@@ -21,6 +24,159 @@ function replaceHash(nextHash: string): void {
   }
 }
 
+function canUseChromeAction(runtime: { isExtensionPage: boolean }): boolean {
+  return (
+    runtime.isExtensionPage &&
+    typeof chrome !== "undefined" &&
+    Boolean((chrome as unknown as { action?: unknown }).action)
+  );
+}
+
+function clearActionBadgeForTab(tabId: number): void {
+  try {
+    chrome.action.setBadgeText({ text: "", tabId });
+    chrome.action.setTitle({
+      title: "My Browser Utils",
+      tabId,
+    });
+  } catch {
+    // no-op
+  }
+}
+
+function coerceCopyTitleLinkFailure(
+  value: unknown
+): Result.Result<CopyTitleLinkFailure, "invalid"> {
+  if (typeof value !== "object" || value === null) {
+    return Result.fail("invalid");
+  }
+  const v = value as Record<string, unknown>;
+  if (typeof v.occurredAt !== "number") {
+    return Result.fail("invalid");
+  }
+  if (typeof v.tabId !== "number") {
+    return Result.fail("invalid");
+  }
+  if (typeof v.pageTitle !== "string") {
+    return Result.fail("invalid");
+  }
+  if (typeof v.pageUrl !== "string") {
+    return Result.fail("invalid");
+  }
+  if (typeof v.text !== "string") {
+    return Result.fail("invalid");
+  }
+  if (typeof v.error !== "string") {
+    return Result.fail("invalid");
+  }
+  return Result.succeed(value as CopyTitleLinkFailure);
+}
+
+async function loadCopyTitleLinkFailure(runtime: {
+  storageLocalGet: (keys: ["lastCopyTitleLinkFailure"]) => Promise<unknown>;
+}): Promise<
+  | { ok: true; value: CopyTitleLinkFailure }
+  | { ok: false; error: "none" | "storage-error" | "invalid" }
+> {
+  const result = await Result.pipe(
+    Result.try({
+      immediate: true,
+      try: () => runtime.storageLocalGet(["lastCopyTitleLinkFailure"]),
+      catch: () => "storage-error" as const,
+    }),
+    Result.map(
+      (data) =>
+        (data as { lastCopyTitleLinkFailure?: unknown })
+          .lastCopyTitleLinkFailure
+    ),
+    Result.andThen((stored) => {
+      if (typeof stored === "undefined") {
+        return Result.fail("none" as const);
+      }
+      return coerceCopyTitleLinkFailure(stored);
+    })
+  );
+
+  if (Result.isFailure(result)) {
+    return { ok: false, error: result.error };
+  }
+
+  return { ok: true, value: result.value };
+}
+
+async function handleCopyTitleLinkFailureOnPopupOpen(params: {
+  runtime: ReturnType<typeof createPopupRuntime>;
+  notify: ReturnType<typeof createNotifications>["notify"];
+  setCreateLinkInitialLink: (value: { title: string; url: string }) => void;
+  setCreateLinkInitialFormat: (value: LinkFormat) => void;
+  navigateToCreateLink: () => void;
+}): Promise<void> {
+  const MAX_AGE_MS = 2 * 60 * 1000;
+
+  const failureLoaded = await loadCopyTitleLinkFailure(params.runtime);
+  if (!failureLoaded.ok) {
+    if (failureLoaded.error === "invalid") {
+      await params.runtime
+        .storageLocalRemove("lastCopyTitleLinkFailure")
+        .catch(() => {
+          // no-op
+        });
+    }
+    return;
+  }
+
+  const failure = failureLoaded.value;
+  const actionAvailable = canUseChromeAction(params.runtime);
+
+  if (Date.now() - failure.occurredAt > MAX_AGE_MS) {
+    await params.runtime
+      .storageLocalRemove("lastCopyTitleLinkFailure")
+      .catch(() => {
+        // no-op
+      });
+    if (actionAvailable) {
+      clearActionBadgeForTab(failure.tabId);
+    }
+    return;
+  }
+
+  const activeTabId = await params.runtime.getActiveTabId().catch(() => null);
+  if (activeTabId === null) {
+    return;
+  }
+  if (activeTabId !== failure.tabId) {
+    return;
+  }
+
+  await params.runtime
+    .storageLocalRemove("lastCopyTitleLinkFailure")
+    .catch(() => {
+      // no-op
+    });
+  if (actionAvailable) {
+    clearActionBadgeForTab(failure.tabId);
+  }
+
+  params.setCreateLinkInitialLink({
+    title: failure.pageTitle,
+    url: failure.pageUrl,
+  });
+  params.setCreateLinkInitialFormat("text");
+  params.navigateToCreateLink();
+
+  params.notify.error(
+    [
+      "このページでは自動コピーできませんでした。",
+      failure.pageTitle ? `タイトル: ${failure.pageTitle}` : null,
+      failure.pageUrl ? `URL: ${failure.pageUrl}` : null,
+      "",
+      "このポップアップ「リンク作成」からコピーできます。",
+    ]
+      .filter(Boolean)
+      .join("\n")
+  );
+}
+
 export function PopupApp(): React.JSX.Element {
   const initialValue = useMemo<PaneId>(
     () => getPaneIdFromHash(window.location.hash) ?? "pane-actions",
@@ -32,6 +188,13 @@ export function PopupApp(): React.JSX.Element {
 
   const runtime = useMemo(() => createPopupRuntime(), []);
   const notifications = useMemo(() => createNotifications(), []);
+
+  const [createLinkInitialLink, setCreateLinkInitialLink] = useState<{
+    title: string;
+    url: string;
+  } | null>(null);
+  const [createLinkInitialFormat, setCreateLinkInitialFormat] =
+    useState<LinkFormat | null>(null);
 
   const focusTokenInput = useCallback(() => {
     window.setTimeout(() => {
@@ -73,6 +236,18 @@ export function PopupApp(): React.JSX.Element {
       document.body.classList.remove("menu-open");
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    handleCopyTitleLinkFailureOnPopupOpen({
+      runtime,
+      notify: notifications.notify,
+      setCreateLinkInitialLink: (value) => setCreateLinkInitialLink(value),
+      setCreateLinkInitialFormat: (value) => setCreateLinkInitialFormat(value),
+      navigateToCreateLink: () => setTabValue("pane-create-link"),
+    }).catch(() => {
+      // no-op
+    });
+  }, [notifications.notify, runtime]);
 
   return (
     <Tabs.Root
@@ -121,7 +296,12 @@ export function PopupApp(): React.JSX.Element {
               <TablePane notify={notifications.notify} runtime={runtime} />
             </Tabs.Panel>
             <Tabs.Panel data-pane="pane-create-link" value="pane-create-link">
-              <CreateLinkPane notify={notifications.notify} runtime={runtime} />
+              <CreateLinkPane
+                initialFormat={createLinkInitialFormat ?? undefined}
+                initialLink={createLinkInitialLink ?? undefined}
+                notify={notifications.notify}
+                runtime={runtime}
+              />
             </Tabs.Panel>
             <Tabs.Panel data-pane="pane-settings" value="pane-settings">
               <SettingsPane
