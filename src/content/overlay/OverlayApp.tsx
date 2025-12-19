@@ -43,14 +43,20 @@ function splitSelectionSecondary(secondary: string): {
 } {
   const raw = secondary.trim();
   const match = raw.match(/^選択範囲:\s*\n([\s\S]*)$/);
-  if (!match) return { selectionText: "", remainder: raw };
+  if (!match) {
+    return { selectionText: "", remainder: raw };
+  }
 
   const afterPrefix = (match[1] ?? "").trim();
-  if (!afterPrefix) return { selectionText: "", remainder: "" };
+  if (!afterPrefix) {
+    return { selectionText: "", remainder: "" };
+  }
 
   const tokenHintMarker = "\n\nOpenAI API Token未設定の場合は、";
   const markerIndex = afterPrefix.indexOf(tokenHintMarker);
-  if (markerIndex < 0) return { selectionText: afterPrefix, remainder: "" };
+  if (markerIndex < 0) {
+    return { selectionText: afterPrefix, remainder: "" };
+  }
 
   const selectionText = afterPrefix.slice(0, markerIndex).trim();
   const remainder = afterPrefix.slice(markerIndex + 2).trim();
@@ -66,7 +72,9 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
 
   useLayoutEffect(() => {
-    if (!props.viewModel.open) return;
+    if (!props.viewModel.open) {
+      return;
+    }
     const panel = panelRef.current;
     const panelRect = panel?.getBoundingClientRect();
     const width = panelRect?.width || 520;
@@ -106,11 +114,15 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
     pinnedPos,
   ]);
 
-  if (!props.viewModel.open) return null;
+  if (!props.viewModel.open) {
+    return null;
+  }
 
   const copyPrimary = async (): Promise<void> => {
     const text = props.viewModel.primary.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     if (!navigator.clipboard?.writeText) {
       notify.error("コピーに失敗しました");
       return;
@@ -125,13 +137,17 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
 
   const openCalendar = (): void => {
     const url = props.viewModel.calendarUrl?.trim() ?? "";
-    if (!url) return;
+    if (!url) {
+      return;
+    }
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const downloadIcs = (): void => {
     const ics = props.viewModel.ics?.trim() ?? "";
-    if (!ics) return;
+    if (!ics) {
+      return;
+    }
     try {
       const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
       const url = URL.createObjectURL(blob);
@@ -149,7 +165,9 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   };
 
   const startDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
-    if (event.button !== 0) return;
+    if (event.button !== 0) {
+      return;
+    }
     event.preventDefault();
     const rect = props.host.getBoundingClientRect();
     dragOffsetRef.current = {
@@ -167,9 +185,13 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   };
 
   const moveDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
-    if (!dragging) return;
+    if (!dragging) {
+      return;
+    }
     const offset = dragOffsetRef.current;
-    if (!offset) return;
+    if (!offset) {
+      return;
+    }
     const panel = panelRef.current;
     const panelRect = panel?.getBoundingClientRect();
     const width = panelRect?.width || 520;
@@ -185,7 +207,9 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   };
 
   const endDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
-    if (!dragging) return;
+    if (!dragging) {
+      return;
+    }
     setDragging(false);
     dragOffsetRef.current = null;
     try {

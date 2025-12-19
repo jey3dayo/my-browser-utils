@@ -20,9 +20,9 @@ const config: StorybookConfig = {
     { from: "../icons", to: "/icons" },
     { from: "../images", to: "/images" },
   ],
-  async viteFinal(config) {
-    config.resolve ??= {};
-    const alias = config.resolve.alias;
+  viteFinal(viteConfig) {
+    viteConfig.resolve ??= {};
+    const alias = viteConfig.resolve.alias;
     if (Array.isArray(alias)) {
       const existing = alias.find((entry) => entry.find === "@");
       if (existing) {
@@ -31,14 +31,14 @@ const config: StorybookConfig = {
         alias.push({ find: "@", replacement: srcDir });
       }
     } else {
-      config.resolve.alias = { ...(alias ?? {}), "@": srcDir };
+      viteConfig.resolve.alias = { ...(alias ?? {}), "@": srcDir };
     }
 
-    config.optimizeDeps ??= {};
-    const include = Array.isArray(config.optimizeDeps.include)
-      ? config.optimizeDeps.include
+    viteConfig.optimizeDeps ??= {};
+    const include = Array.isArray(viteConfig.optimizeDeps.include)
+      ? viteConfig.optimizeDeps.include
       : [];
-    config.optimizeDeps.include = Array.from(
+    viteConfig.optimizeDeps.include = Array.from(
       new Set([
         ...include,
         "date-fns",
@@ -54,7 +54,7 @@ const config: StorybookConfig = {
         "@base-ui/react/toast",
       ])
     );
-    return config;
+    return viteConfig;
   },
 };
 export default config;

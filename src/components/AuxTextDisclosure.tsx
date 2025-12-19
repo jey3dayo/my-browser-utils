@@ -6,7 +6,9 @@ type Props = {
 
 export function AuxTextDisclosure(props: Props): React.JSX.Element | null {
   const trimmed = props.text.trim();
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
 
   return (
     <details className="mbu-overlay-aux" open={props.defaultOpen}>

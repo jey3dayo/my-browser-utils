@@ -3,7 +3,9 @@
 
   function showBuildError() {
     const existing = document.getElementById("mbu-build-error");
-    if (existing) return;
+    if (existing) {
+      return;
+    }
 
     const banner = document.createElement("div");
     banner.id = "mbu-build-error";
