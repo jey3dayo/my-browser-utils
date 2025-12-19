@@ -125,10 +125,12 @@ jobs:
         run: |
           echo "✅ Documentation-only changes detected"
           echo "Skipping CI checks (lint/test/build/storybook)"
-          echo "## Documentation Quality Gate: PASSED ✅" >> "$GITHUB_STEP_SUMMARY"
-          echo "This PR contains only documentation changes:" >> "$GITHUB_STEP_SUMMARY"
-          echo "- ✅ CI checks skipped (appropriate for docs-only changes)" >> "$GITHUB_STEP_SUMMARY"
-          echo "- ✅ Documentation changes approved" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Documentation Quality Gate: PASSED ✅"
+            echo "This PR contains only documentation changes:"
+            echo "- ✅ CI checks skipped (appropriate for docs-only changes)"
+            echo "- ✅ Documentation changes approved"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   unified-quality-gate:
     name: Quality Gate
@@ -153,8 +155,10 @@ jobs:
 
           if [ "$DETECT_CHANGES_RESULT" != "success" ]; then
             echo "❌ Detect Changes job failed"
-            echo "## ❌ Quality Gate: FAILED" >> "$GITHUB_STEP_SUMMARY"
-            echo "Detect Changes job failed; cannot determine which checks to run." >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "## ❌ Quality Gate: FAILED"
+              echo "Detect Changes job failed; cannot determine which checks to run."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -167,14 +171,18 @@ jobs:
 
             if [ "$result" = "success" ]; then
               echo "✅ Quality Gate PASSED"
-              echo "## ✅ Quality Gate: PASSED" >> "$GITHUB_STEP_SUMMARY"
-              echo "Documentation-only checks completed successfully." >> "$GITHUB_STEP_SUMMARY"
+              {
+                echo "## ✅ Quality Gate: PASSED"
+                echo "Documentation-only checks completed successfully."
+              } >> "$GITHUB_STEP_SUMMARY"
               exit 0
             fi
 
             echo "❌ Quality Gate FAILED"
-            echo "## ❌ Quality Gate: FAILED" >> "$GITHUB_STEP_SUMMARY"
-            echo "Documentation quality gate failed. Result: $result" >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "## ❌ Quality Gate: FAILED"
+              echo "Documentation quality gate failed. Result: $result"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
 
@@ -204,12 +212,16 @@ jobs:
 
           if [ "$failed" -eq 0 ]; then
             echo "✅ Quality Gate PASSED"
-            echo "## ✅ Quality Gate: PASSED" >> "$GITHUB_STEP_SUMMARY"
-            echo "All required checks have been completed successfully." >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "## ✅ Quality Gate: PASSED"
+              echo "All required checks have been completed successfully."
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           echo "❌ Quality Gate FAILED"
-          echo "## ❌ Quality Gate: FAILED" >> "$GITHUB_STEP_SUMMARY"
-          echo "Some required checks have failed." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## ❌ Quality Gate: FAILED"
+            echo "Some required checks have failed."
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 1
