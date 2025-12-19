@@ -199,7 +199,7 @@ function updateHostPosition(
 function positionOverlayHost(params: {
   open: boolean;
   host: HTMLDivElement;
-  panel: HTMLDivElement | null;
+  size: PanelSize;
   pinned: boolean;
   pinnedPos: Point | null;
   anchorRect: OverlayViewModel["anchorRect"];
@@ -208,7 +208,7 @@ function positionOverlayHost(params: {
     return;
   }
 
-  const size = getPanelSize(params.panel);
+  const size = params.size;
 
   if (params.pinned && params.pinnedPos) {
     updateHostPosition(params.host, size, params.pinnedPos);
@@ -562,16 +562,66 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
   const { toastManager, notify } = useMemo(() => createNotifications(), []);
   const viewModel = props.viewModel;
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const [panelSize, setPanelSize] = useState<PanelSize>({
+    width: 520,
+    height: 300,
+  });
   const [pinned, setPinned] = useState(false);
   const [pinnedPos, setPinnedPos] = useState<Point | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragOffsetRef = useRef<DragOffset | null>(null);
 
   useLayoutEffect(() => {
+    if (!viewModel.open) {
+      return;
+    }
+
+    const panel = panelRef.current;
+    if (!panel || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    let lastWidth = 0;
+    let lastHeight = 0;
+
+    const commit = (size: PanelSize): void => {
+      const width = Math.round(size.width);
+      const height = Math.round(size.height);
+      if (width <= 0 || height <= 0) {
+        return;
+      }
+      if (width === lastWidth && height === lastHeight) {
+        return;
+      }
+      lastWidth = width;
+      lastHeight = height;
+      setPanelSize({ width, height });
+    };
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      commit({
+        width: entry.contentRect.width,
+        height: entry.contentRect.height,
+      });
+    });
+
+    observer.observe(panel);
+    commit(getPanelSize(panel));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [viewModel.open]);
+
+  useLayoutEffect(() => {
     positionOverlayHost({
       open: viewModel.open,
       host: props.host,
-      panel: panelRef.current,
+      size: panelSize,
       pinned,
       pinnedPos,
       anchorRect: viewModel.anchorRect,
@@ -580,7 +630,14 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
       host: props.host,
       panel: panelRef.current,
     });
-  }, [props.host, viewModel.open, viewModel.anchorRect, pinned, pinnedPos]);
+  }, [
+    props.host,
+    viewModel.open,
+    viewModel.anchorRect,
+    pinned,
+    pinnedPos,
+    panelSize,
+  ]);
 
   if (!viewModel.open) {
     return null;
