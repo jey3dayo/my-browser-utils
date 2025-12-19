@@ -120,6 +120,18 @@ export const Basic: Story = {
       if (!toast) {
         throw new Error(`Toast not found: ${expectedText}`);
       }
+
+      await waitFor(() => {
+        const viewport = doc.body.querySelector<HTMLElement>(
+          ".mbu-toast-viewport"
+        );
+        expect(viewport).toBeTruthy();
+        if (!viewport) {
+          return;
+        }
+        expect(getComputedStyle(viewport).position).toBe("fixed");
+      });
+
       const rect = toast.getBoundingClientRect();
 
       expect(rect.left).toBeGreaterThanOrEqual(-1);
