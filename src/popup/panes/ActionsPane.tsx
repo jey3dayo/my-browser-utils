@@ -16,6 +16,7 @@ import type {
   RunContextActionResponse,
 } from "@/popup/runtime";
 import { ensureOpenAiTokenConfigured } from "@/popup/token_guard";
+import { coerceSummarySourceLabel } from "@/popup/utils/summary_source_label";
 import type { Notifier } from "@/ui/toast";
 import { isRecord } from "@/utils/guards";
 
@@ -50,16 +51,6 @@ function isRunContextActionResponse(
   return true;
 }
 
-function coerceSourceLabel(source: unknown): string {
-  if (source === "selection") {
-    return "選択範囲";
-  }
-  if (source === "page") {
-    return "ページ本文";
-  }
-  return "-";
-}
-
 function coerceKind(value: unknown): ContextActionKind | null {
   if (value === "event") {
     return "event";
@@ -88,7 +79,7 @@ function parseRunContextActionResponseToOutput(params: {
     };
   }
 
-  const sourceLabel = coerceSourceLabel(
+  const sourceLabel = coerceSummarySourceLabel(
     (response as { source?: unknown }).source
   );
   const resultType = (response as { resultType?: unknown }).resultType;

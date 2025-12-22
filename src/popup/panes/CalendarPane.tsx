@@ -9,6 +9,7 @@ import type {
   SummaryTarget,
 } from "@/popup/runtime";
 import { ensureOpenAiTokenConfigured } from "@/popup/token_guard";
+import { coerceSummarySourceLabel } from "@/popup/utils/summary_source_label";
 import type {
   CalendarRegistrationTarget,
   ExtractedEvent,
@@ -37,18 +38,6 @@ type OutputState =
   | { status: "error"; message: string };
 
 type SummarizeEventSuccess = Extract<SummarizeEventResponse, { ok: true }>;
-
-function coerceSourceLabel(
-  source: SummaryTarget["source"] | undefined
-): string {
-  if (source === "selection") {
-    return "選択範囲";
-  }
-  if (source === "page") {
-    return "ページ本文";
-  }
-  return "-";
-}
 
 export function CalendarPane(props: CalendarPaneProps): React.JSX.Element {
   const [targets, setTargets] = useState<CalendarRegistrationTarget[]>(
@@ -240,7 +229,7 @@ export function CalendarPane(props: CalendarPaneProps): React.JSX.Element {
     setOutput({
       status: "ready",
       text: payload.eventText,
-      sourceLabel: coerceSourceLabel(target.source),
+      sourceLabel: coerceSummarySourceLabel(target.source),
       calendarUrl,
       event: payload.event,
     });
