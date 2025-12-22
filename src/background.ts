@@ -19,7 +19,7 @@ import {
   parseDateOnlyToYyyyMmDd,
   parseDateTimeLoose,
 } from "@/utils/date_utils";
-import { toErrorMessage } from "@/utils/errors";
+import { formatErrorLog, toErrorMessage } from "@/utils/errors";
 import { computeEventDateRange } from "@/utils/event_date_range";
 import { buildIcs } from "@/utils/ics";
 import { safeParseJsonObject } from "@/utils/json";
@@ -268,7 +268,13 @@ async function handleCopyTitleLinkContextMenuClick(
     });
   } catch (error) {
     const errorMessage = toErrorMessage(error, "コピーに失敗しました");
-    console.error("copy title/link failed:", { title, url }, error);
+    console.error(
+      formatErrorLog(
+        "copy title/link failed",
+        { tabId: params.tabId, title, url, format, errorMessage },
+        error
+      )
+    );
 
     const overlayShown = await showCopyTitleLinkOverlay({
       tabId: params.tabId,
@@ -724,7 +730,7 @@ async function refreshContextMenus(): Promise<void> {
       });
     }
   } catch (error) {
-    console.error("refreshContextMenus failed:", error);
+    console.error(formatErrorLog("refreshContextMenus failed", {}, error));
   }
 }
 
