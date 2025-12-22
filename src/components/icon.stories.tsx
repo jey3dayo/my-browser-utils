@@ -50,7 +50,7 @@ function IconGallery(): React.JSX.Element {
 }
 
 const meta = {
-  title: "Components/Icon",
+  title: "Shared/Components/Icon",
   component: IconGallery,
   tags: ["test"],
 } satisfies Meta<typeof IconGallery>;
