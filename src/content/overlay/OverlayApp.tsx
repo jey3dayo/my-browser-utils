@@ -235,8 +235,12 @@ function positionOverlayHost(params: {
   const size = params.size;
 
   if (params.pinned) {
-    const point = params.pinnedPos ?? getPinnedCornerPoint(size);
-    updateHostPosition(params.host, size, point);
+    updateHostPosition(params.host, size, getPinnedCornerPoint(size));
+    return;
+  }
+
+  if (params.pinnedPos) {
+    updateHostPosition(params.host, size, params.pinnedPos);
     return;
   }
 
@@ -305,14 +309,17 @@ function downloadIcsFile(notify: OverlayNotify, ics: string): void {
 }
 
 function startOverlayDrag(params: {
-  event: React.PointerEvent<HTMLButtonElement>;
+  event: React.PointerEvent<HTMLElement>;
   host: HTMLDivElement;
   dragOffsetRef: React.MutableRefObject<DragOffset | null>;
-  setPinned: StateSetter<boolean>;
   setDragging: StateSetter<boolean>;
   setPinnedPos: StateSetter<Point | null>;
 }): void {
   if (params.event.button !== 0) {
+    return;
+  }
+  const target = params.event.target as HTMLElement | null;
+  if (target?.closest("button")) {
     return;
   }
   params.event.preventDefault();
@@ -321,7 +328,6 @@ function startOverlayDrag(params: {
     x: params.event.clientX - rect.left,
     y: params.event.clientY - rect.top,
   };
-  params.setPinned(true);
   params.setDragging(true);
   params.setPinnedPos({ left: rect.left, top: rect.top });
   try {
@@ -332,11 +338,12 @@ function startOverlayDrag(params: {
 }
 
 function moveOverlayDrag(params: {
-  event: React.PointerEvent<HTMLButtonElement>;
-  host: HTMLDivElement;
+  event: React.PointerEvent<HTMLElement>;
+  pinned: boolean;
   panel: HTMLDivElement | null;
   dragging: boolean;
   dragOffsetRef: React.MutableRefObject<DragOffset | null>;
+  setPinned: StateSetter<boolean>;
   setPinnedPos: StateSetter<Point | null>;
 }): void {
   if (!params.dragging) {
@@ -351,6 +358,9 @@ function moveOverlayDrag(params: {
   const margin = 16;
   const maxLeft = Math.max(margin, window.innerWidth - size.width - margin);
   const maxTop = Math.max(margin, window.innerHeight - size.height - margin);
+  if (params.pinned) {
+    params.setPinned(false);
+  }
   params.setPinnedPos({
     left: clamp(params.event.clientX - offset.x, margin, maxLeft),
     top: clamp(params.event.clientY - offset.y, margin, maxTop),
@@ -358,7 +368,7 @@ function moveOverlayDrag(params: {
 }
 
 function endOverlayDrag(params: {
-  event: React.PointerEvent<HTMLButtonElement>;
+  event: React.PointerEvent<HTMLElement>;
   dragging: boolean;
   dragOffsetRef: React.MutableRefObject<DragOffset | null>;
   setDragging: StateSetter<boolean>;
@@ -493,6 +503,7 @@ function OverlayEventDetails(
         </tbody>
       </table>
       <AuxTextDisclosure
+        storageKey="overlaySelectionDisclosureOpen"
         summary="選択したテキスト（確認用）"
         text={props.selectionText}
       />
@@ -529,6 +540,7 @@ function OverlayTextDetails(props: OverlayTextDetailsProps): React.JSX.Element {
         <pre className="mbu-overlay-secondary-text">{props.secondaryText}</pre>
       ) : null}
       <AuxTextDisclosure
+        storageKey="overlaySelectionDisclosureOpen"
         summary="選択したテキスト（確認用）"
         text={props.selectionText}
       />
@@ -752,29 +764,29 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
     downloadIcsFile(notify, viewModel.ics ?? "");
   };
 
-  const startDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     startOverlayDrag({
       event,
       host: props.host,
       dragOffsetRef,
-      setPinned,
       setDragging,
       setPinnedPos,
     });
   };
 
-  const moveDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+  const moveDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     moveOverlayDrag({
       event,
-      host: props.host,
+      pinned,
       panel: panelRef.current,
       dragging,
       dragOffsetRef,
+      setPinned,
       setPinnedPos,
     });
   };
 
-  const endDrag = (event: React.PointerEvent<HTMLButtonElement>): void => {
+  const endDrag = (event: React.PointerEvent<HTMLDivElement>): void => {
     endOverlayDrag({ event, dragging, dragOffsetRef, setDragging });
   };
 
@@ -809,19 +821,15 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
         toastManager={toastManager}
       />
       <div className="mbu-overlay-panel" ref={panelRef}>
-        <div className="mbu-overlay-header">
+        <div
+          className="mbu-overlay-header"
+          data-dragging={dragging ? "true" : undefined}
+          onPointerCancel={endDrag}
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+        >
           <div className="mbu-overlay-header-left">
-            <Button
-              aria-label="ドラッグして固定"
-              className="mbu-overlay-drag"
-              onPointerCancel={endDrag}
-              onPointerDown={startDrag}
-              onPointerMove={moveDrag}
-              onPointerUp={endDrag}
-              type="button"
-            >
-              ⋮⋮
-            </Button>
             <div className="mbu-overlay-title">
               {viewModel.title}{" "}
               <span className="mbu-overlay-chip">{sourceLabel}</span>
