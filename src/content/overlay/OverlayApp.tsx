@@ -8,9 +8,17 @@ import {
   useState,
 } from "react";
 import { AuxTextDisclosure } from "@/components/AuxTextDisclosure";
-import { CopyIcon, PinIcon, ThemeIcon } from "@/content/overlay/icons";
+import { ThemeCycleButton } from "@/components/ThemeCycleButton";
+import { CopyIcon, PinIcon } from "@/content/overlay/icons";
 import type { ExtractedEvent, Size, SummarySource } from "@/shared_types";
-import { applyTheme, isTheme, type Theme } from "@/ui/theme";
+import { applyTheme, type Theme } from "@/ui/theme";
+import { nextTheme } from "@/ui/themeCycle";
+import {
+  loadStoredTheme,
+  normalizeTheme,
+  persistTheme,
+  themeFromHost,
+} from "@/ui/themeStorage";
 import { createNotifications, ToastHost } from "@/ui/toast";
 
 export type OverlayViewModel = {
@@ -53,77 +61,8 @@ const OVERLAY_TOAST_SURFACE_INSET_BELOW = `calc(100% + ${OVERLAY_TOAST_GAP_PX}px
 const OVERLAY_TOAST_SURFACE_INSET_ABOVE = `auto 12px calc(100% + ${OVERLAY_TOAST_GAP_PX}px) 12px`;
 const OVERLAY_TOAST_SURFACE_INSET_INSIDE = "auto 12px 12px 12px";
 
-const THEME_SEQUENCE: Theme[] = ["auto", "light", "dark"];
-const THEME_LABELS: Record<Theme, string> = {
-  auto: "自動",
-  light: "ライト",
-  dark: "ダーク",
-};
-
 // Regex patterns at module level for performance (lint/performance/useTopLevelRegex)
 const SELECTION_SECONDARY_REGEX = /^選択範囲:\s*\n([\s\S]*)$/;
-
-function normalizeTheme(value: unknown): Theme {
-  return isTheme(value) ? value : "auto";
-}
-
-function themeLabel(theme: Theme): string {
-  return THEME_LABELS[theme];
-}
-
-function themeButtonLabel(theme: Theme): string {
-  const next = nextTheme(theme);
-  return `テーマ: ${themeLabel(theme)}（クリックで${themeLabel(next)}へ）`;
-}
-
-function nextTheme(theme: Theme): Theme {
-  const index = THEME_SEQUENCE.indexOf(theme);
-  const nextIndex = index >= 0 ? (index + 1) % THEME_SEQUENCE.length : 0;
-  return THEME_SEQUENCE[nextIndex] ?? "auto";
-}
-
-function themeFromHost(host: HTMLElement | null): Theme {
-  if (!host) {
-    return "auto";
-  }
-  return normalizeTheme(host.getAttribute("data-theme"));
-}
-
-function loadStoredTheme(fallback: Theme): Promise<Theme> {
-  if (typeof chrome === "undefined") {
-    return Promise.resolve(fallback);
-  }
-  const storage = chrome.storage?.local;
-  if (!storage) {
-    return Promise.resolve(fallback);
-  }
-  return new Promise((resolve) => {
-    storage.get(["theme"], (items) => {
-      const err = chrome.runtime?.lastError;
-      if (err) {
-        resolve(fallback);
-        return;
-      }
-      const data = items as { theme?: unknown };
-      resolve(normalizeTheme(data.theme));
-    });
-  });
-}
-
-function persistTheme(theme: Theme): Promise<void> {
-  if (typeof chrome === "undefined") {
-    return Promise.resolve();
-  }
-  const storage = chrome.storage?.local;
-  if (!storage) {
-    return Promise.resolve();
-  }
-  return new Promise((resolve) => {
-    storage.set({ theme }, () => {
-      resolve();
-    });
-  });
-}
 
 function statusLabelFromStatus(status: OverlayViewModel["status"]): string {
   if (status === "loading") {
@@ -913,17 +852,12 @@ export function OverlayApp(props: Props): React.JSX.Element | null {
                 </div>
               </div>
             </div>
-            <Button
-              aria-label={themeButtonLabel(theme)}
+            <ThemeCycleButton
               className="mbu-overlay-action mbu-overlay-icon-button"
-              data-active={theme !== "auto" ? "true" : undefined}
-              data-testid="overlay-theme"
-              onClick={toggleTheme}
-              title={themeButtonLabel(theme)}
-              type="button"
-            >
-              <ThemeIcon theme={theme} />
-            </Button>
+              onToggle={toggleTheme}
+              testId="overlay-theme"
+              theme={theme}
+            />
             <Button
               aria-label="閉じる"
               className="mbu-overlay-action mbu-overlay-icon-button"
