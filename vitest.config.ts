@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { playwright } from "@vitest/browser-playwright";
+import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
 
 const dirname =
@@ -11,15 +12,9 @@ const dirname =
     : path.dirname(fileURLToPath(import.meta.url));
 const alias = { "@": path.join(dirname, "src") };
 
-const tomlAsText = () => ({
+const tomlAsText = (): Plugin => ({
   name: "toml-as-text",
   enforce: "pre",
-  resolveId(source: string) {
-    if (source.endsWith(".toml")) {
-      return source;
-    }
-    return null;
-  },
   load(id: string) {
     if (!id.endsWith(".toml")) {
       return null;
