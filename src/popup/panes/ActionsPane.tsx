@@ -16,10 +16,8 @@ import type {
   RunContextActionResponse,
 } from "@/popup/runtime";
 import { ensureOpenAiTokenConfigured } from "@/popup/token_guard";
-import type { ExtractedEvent } from "@/shared_types";
 import type { Notifier } from "@/ui/toast";
 import { isRecord } from "@/utils/guards";
-import { buildIcs, sanitizeFileName } from "@/utils/ics";
 
 type OutputState =
   | { status: "idle" }
@@ -29,9 +27,6 @@ type OutputState =
       title: string;
       text: string;
       sourceLabel: string;
-      mode: "text" | "event";
-      calendarUrl?: string;
-      event?: ExtractedEvent;
     }
   | { status: "error"; title: string; message: string };
 
@@ -75,24 +70,6 @@ function coerceKind(value: unknown): ContextActionKind | null {
   return null;
 }
 
-function coerceExtractedEvent(value: unknown): ExtractedEvent | null {
-  if (!isRecord(value)) {
-    return null;
-  }
-  const raw = value as Partial<ExtractedEvent>;
-  const title = typeof raw.title === "string" ? raw.title : "";
-  const start = typeof raw.start === "string" ? raw.start : "";
-  const end = typeof raw.end === "string" ? raw.end : undefined;
-  const allDay = typeof raw.allDay === "boolean" ? raw.allDay : undefined;
-  const location = typeof raw.location === "string" ? raw.location : undefined;
-  const description =
-    typeof raw.description === "string" ? raw.description : undefined;
-  if (!start.trim()) {
-    return null;
-  }
-  return { title, start, end, allDay, location, description };
-}
-
 function parseRunContextActionResponseToOutput(params: {
   actionTitle: string;
   responseUnknown: unknown;
@@ -122,10 +99,6 @@ function parseRunContextActionResponseToOutput(params: {
     if (typeof eventText !== "string") {
       return { ok: false, error: "イベント結果が不正です" };
     }
-    const calendarUrl = (response as { calendarUrl?: unknown }).calendarUrl;
-    const calendarUrlText =
-      typeof calendarUrl === "string" ? calendarUrl.trim() : "";
-    const event = coerceExtractedEvent((response as { event?: unknown }).event);
     return {
       ok: true,
       output: {
@@ -133,9 +106,6 @@ function parseRunContextActionResponseToOutput(params: {
         title: params.actionTitle,
         text: eventText,
         sourceLabel,
-        mode: "event",
-        calendarUrl: calendarUrlText || undefined,
-        event: event ?? undefined,
       },
     };
   }
@@ -155,7 +125,6 @@ function parseRunContextActionResponseToOutput(params: {
       title: params.actionTitle,
       text,
       sourceLabel,
-      mode: "text",
     },
   };
 }
@@ -178,14 +147,6 @@ export function ActionsPane(props: ActionsPaneProps): React.JSX.Element {
       : "出力";
   const outputText = output.status === "ready" ? output.text : "";
   const canCopyOutput = Boolean(outputText.trim());
-  const canOpenCalendar =
-    output.status === "ready" &&
-    output.mode === "event" &&
-    Boolean(output.calendarUrl?.trim());
-  const canDownloadIcs =
-    output.status === "ready" &&
-    output.mode === "event" &&
-    Boolean(output.event);
   const outputValue = (() => {
     switch (output.status) {
       case "ready":
@@ -446,49 +407,6 @@ export function ActionsPane(props: ActionsPaneProps): React.JSX.Element {
     }
   };
 
-  const openCalendar = (): void => {
-    if (output.status !== "ready" || output.mode !== "event") {
-      return;
-    }
-    const calendarUrl = output.calendarUrl?.trim() ?? "";
-    if (!calendarUrl) {
-      props.notify.error("カレンダーリンクが見つかりません");
-      return;
-    }
-    props.runtime.openUrl(calendarUrl);
-  };
-
-  const downloadIcs = (): void => {
-    if (output.status !== "ready" || output.mode !== "event") {
-      return;
-    }
-    const event = output.event;
-    if (!event) {
-      props.notify.error(".ics の生成に必要な情報が不足しています");
-      return;
-    }
-    const ics = buildIcs(event);
-    if (!ics) {
-      props.notify.error(".ics の生成に失敗しました");
-      return;
-    }
-
-    try {
-      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${sanitizeFileName(event.title || output.title)}.ics`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      props.notify.success("ダウンロードしました");
-    } catch {
-      props.notify.error(".ics のダウンロードに失敗しました");
-    }
-  };
-
   return (
     <div className="card card-stack">
       <div className="row-between">
@@ -514,18 +432,10 @@ export function ActionsPane(props: ActionsPaneProps): React.JSX.Element {
 
       <ActionOutputPanel
         canCopy={canCopyOutput}
-        canDownloadIcs={canDownloadIcs}
-        canOpenCalendar={canOpenCalendar}
         onCopy={() => {
           copyOutput().catch(() => {
             // no-op
           });
-        }}
-        onDownloadIcs={() => {
-          downloadIcs();
-        }}
-        onOpenCalendar={() => {
-          openCalendar();
         }}
         title={outputTitle}
         value={outputValue}
