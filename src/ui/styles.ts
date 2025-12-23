@@ -195,6 +195,7 @@ export function ensureShadowUiBaseStyles(shadowRoot: ShadowRoot): void {
     }
     if (!host.isConnected) {
       return true;
+    }
     const value = getComputedStyle(host)
       .getPropertyValue("--mbu-surface")
       .trim();
