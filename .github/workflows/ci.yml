@@ -134,7 +134,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   unified-quality-gate:
-    name: Gate: Quality
+    name: Quality Gate
     runs-on: ubuntu-latest
     needs: [detect-changes, actionlint, lint, test, build, storybook, docs-quality-gate]
     if: always()
