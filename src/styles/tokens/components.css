@@ -206,12 +206,12 @@
   }
 }
 
-:host(#my-browser-utils-toast-host) {
+:host(#my-toolkit-toast-host) {
   top: 0;
   left: 0;
 }
 
-:host(#my-browser-utils-overlay) {
+:host(#my-toolkit-overlay) {
   top: 16px;
   left: 16px;
   --toast-surface-inset: calc(100% + 8px) 0 auto 12px;

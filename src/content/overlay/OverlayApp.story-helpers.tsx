@@ -49,7 +49,7 @@ export function OverlayAppStory(args: OverlayStoryArgs): React.JSX.Element {
       return;
     }
 
-    host.id = "my-browser-utils-overlay";
+    host.id = "my-toolkit-overlay";
     host.style.position = "fixed";
     host.style.top = "16px";
     host.style.left = "16px";
@@ -58,11 +58,11 @@ export function OverlayAppStory(args: OverlayStoryArgs): React.JSX.Element {
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     ensureShadowUiBaseStyles(shadow);
 
-    const root = shadow.getElementById("my-browser-utils-overlay-root");
+    const root = shadow.getElementById("my-toolkit-overlay-root");
     const rootEl = root
       ? (root as HTMLDivElement)
       : document.createElement("div");
-    rootEl.id = "my-browser-utils-overlay-root";
+    rootEl.id = "my-toolkit-overlay-root";
     if (!root) {
       shadow.appendChild(rootEl);
     }
@@ -154,7 +154,7 @@ export function OverlayAppFallbackStory(
       return;
     }
 
-    host.id = "my-browser-utils-overlay-fallback";
+    host.id = "my-toolkit-overlay-fallback";
     host.style.position = "fixed";
     host.style.top = "16px";
     host.style.left = "16px";
@@ -163,11 +163,11 @@ export function OverlayAppFallbackStory(
     const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     ensureOverlayFallbackStyles(shadow);
 
-    const root = shadow.getElementById("my-browser-utils-overlay-root");
+    const root = shadow.getElementById("my-toolkit-overlay-root");
     const rootEl = root
       ? (root as HTMLDivElement)
       : document.createElement("div");
-    rootEl.id = "my-browser-utils-overlay-root";
+    rootEl.id = "my-toolkit-overlay-root";
     if (!root) {
       shadow.appendChild(rootEl);
     }
