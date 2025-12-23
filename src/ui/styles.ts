@@ -127,7 +127,8 @@ const FALLBACK_MBU_TOKENS: Record<string, string> = {
   "--mbu-focus-ring": "var(--focus-ring, 2px solid rgba(123, 220, 247, 0.55))",
   "--mbu-focus-ring-offset": "var(--focus-ring-offset, 2px)",
   "--mbu-toast-screen-inset": "var(--toast-screen-inset, 12px 12px auto auto)",
-  "--mbu-toast-surface-inset": "var(--toast-surface-inset, 12px 12px auto auto)",
+  "--mbu-toast-surface-inset":
+    "var(--toast-surface-inset, 12px 12px auto auto)",
 };
 
 function ensureShadowFallbackTokens(shadowRoot: ShadowRoot): void {
@@ -190,7 +191,7 @@ export function ensureShadowUiBaseStyles(shadowRoot: ShadowRoot): void {
       return true;
     }
     const host = shadowRoot.host;
-    if (!(host instanceof HTMLElement) || !host.isConnected) {
+    if (!(host instanceof HTMLElement && host.isConnected)) {
       return true;
     }
     const value = getComputedStyle(host)
