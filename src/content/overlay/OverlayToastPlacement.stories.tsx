@@ -20,7 +20,7 @@ function OverlayToastPlacementStory(): React.JSX.Element {
       return;
     }
 
-    host.id = "my-browser-utils-overlay";
+    host.id = "my-toolkit-overlay";
     const shadowRoot = host.shadowRoot ?? host.attachShadow({ mode: "open" });
     ensureShadowUiBaseStyles(shadowRoot);
     applyTheme(resolvedTheme, shadowRoot);
@@ -88,10 +88,10 @@ export const Basic: Story = {
     const doc = canvasElement.ownerDocument;
 
     await waitFor(() => {
-      expect(doc.getElementById("my-browser-utils-overlay")).toBeTruthy();
+      expect(doc.getElementById("my-toolkit-overlay")).toBeTruthy();
     });
 
-    const host = doc.getElementById("my-browser-utils-overlay");
+    const host = doc.getElementById("my-toolkit-overlay");
     if (!(host instanceof HTMLElement)) {
       throw new Error("Overlay host not found");
     }

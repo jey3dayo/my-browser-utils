@@ -1,8 +1,8 @@
-# Product Steering: My Browser Utils
+# Product Steering: My Toolkit
 
 ## Purpose
 
-My Browser Utils is a personal Chrome extension that adds small, high-leverage utilities directly to the pages you use, with minimal setup and no external backend.
+My Toolkit is a personal Chrome extension that adds small, high-leverage utilities directly to the pages you use, with minimal setup and no external backend.
 
 ## Primary Value
 
